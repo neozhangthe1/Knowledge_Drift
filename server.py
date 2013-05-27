@@ -1,6 +1,7 @@
 #!env python2
 
-from bottle import route, run, template, view, debug
+import os.path
+from bottle import route, run, template, view, debug, static_file
 from dcclient import DataCenterClient
 
 debug(True)
@@ -21,4 +22,10 @@ def search(q='data mining'):
         result=result
     )
 
-run(host='0.0.0.0', port=8080, reloader=True)
+
+@route('/static/<path:path>')
+def static(path):
+    curdir = os.path.dirname(os.path.realpath(__file__))
+    return static_file(path, root=curdir + "/static/")
+
+run(server='auto', host='0.0.0.0', port=8080, reloader=True)
