@@ -28,7 +28,7 @@ class DataCenterClient(object):
 
     def searchAuthors(self, query, returned_fields=["naid", "names", "email"]):
         params = interface_pb2.StringQueryParams()
-        params.query = "data mining"
+        params.query = query
         params.offset = 0
         params.count = 50
         params.returned_fields.extend(returned_fields)

@@ -1,7 +1,7 @@
 #!env python2
 
 import os.path
-from bottle import route, run, template, view, debug, static_file
+from bottle import route, run, template, view, debug, static_file, request
 from dcclient import DataCenterClient
 
 debug(True)
@@ -15,8 +15,10 @@ def index():
 
 @route('/search')
 @view('search')
-def search(q='data mining'):
-    result = client.searchAuthors("data mining")
+def search():
+    q = request.query.q or ""
+    print 'searching', q
+    result = client.searchAuthors(q)
     return dict(
         query=q,
         result=result
