@@ -24,6 +24,14 @@ def search():
     )
 
 
+@route('/trends')
+@view('trends')
+def search():
+    q = request.query.q or ""
+    print 'rendering trends for', q
+    return dict()
+
+
 @route('/influence')
 @view('influence')
 def influence():
