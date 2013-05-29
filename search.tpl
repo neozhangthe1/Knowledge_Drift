@@ -1,8 +1,3 @@
-<nav>
-	<a href="../academic/search?{{encoded_query}}">Academic</a>
-	<a href="../patent/search?{{encoded_query}}">Patent</a>
-	<a href="../weibo/search?{{encoded_query}}">Weibo</a>
-</nav>
 <form class="search" method="get">
 	<h2>Search...</h2>
 	<input class="input-block-level" name="q" value="{{query}}"/>
