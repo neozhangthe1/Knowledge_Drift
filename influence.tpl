@@ -1,3 +1,24 @@
+<style type="text/css">
+    .influence-graph, .influence-pie {
+        font: 10px sans-serif;
+    }
+
+    .influence-graph .axis path,
+    .influence-graph .axis line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+    }
+     
+    .influence-graph .x.axis path {
+        display: none;
+    }
+     
+    .influence-graph .area {
+        fill: steelblue;
+    }
+
+</style>
 <div class="hero-unit">
     <h2>Influence graph of <b>{{name}}</b></h2>
     <div class="row-fluid">
@@ -6,10 +27,10 @@
             <p>{{name}}
         </div>
         <div class="span7">
-            <img src="/static/inf.png" alt="Influence Trends" style="width: 100%; height: auto;"/>
+            <div class="influence-graph" style="height: 200px; width: 100%;"></div>
         </div>
         <div class="span3">
-            <img src="/static/pie.png" alt="Influence Distribution" style="width: 100%; height: auto;"/>
+            <div class="influence-pie" style="height: 200px; width: 100%;"></div>
         </div>
     </div>
 </div>
@@ -41,5 +62,5 @@
         </div>
     </div>
 </div>
-
-%rebase layout
+%scripts = ["/static/influence.js"]
+%rebase layout scripts=scripts

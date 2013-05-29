@@ -1,3 +1,8 @@
+%scripts=scripts or []
+%scripts[:0] = ["/static/jquery-2.0.1.min.js",
+%				"/static/bootstrap/js/bootstrap.min.js",
+%				"/static/d3.v3.min.js"]
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +15,8 @@
     <div class="container">
         %include
     </div>
-<script src="http://code.jquery.com/jquery.js"></script>
-<script src="/static/bootstrap/js/bootstrap.min.js"></script>
+%for script in scripts:
+	<script src="{{script}}"></script>
+%end
 </body>
 </html>
