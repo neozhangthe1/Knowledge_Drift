@@ -36,31 +36,6 @@
 </div>
 
 <div class="topics">
-    <div class="row-fluid topic">
-        <div class="span4">
-            <ul class="topic-list">
-                %for topic in topics:
-                <li>{{topic['topic']}} ({{topic['score']}})</li>
-                %end
-            </ul>
-        </div>
-        <div class="span8">
-            %counter = 0
-            %for topic in topics:
-            <div class="topic-analysis index{{counter}}" style="{{"display:none" if counter != 0 else ""}}">
-                <p> Influenced by {{name}}:
-                %for influencee in topic["influencees"]:
-                    <span>{{influencee[0]}} (because he/she is {{name}}'s {{influencee[2]}}) </span>
-                %end
-                <p> Influencers:
-                %for influencer in topic["influencers"]:
-                    <span>{{influencer[0]}} (because he/she is {{name}}'s {{influencer[2]}}) </span>
-                %end
-                %counter += 1
-            </div>
-            %end
-        </div>
-    </div>
 </div>
 %scripts = ["/static/influence.js"]
 %rebase layout scripts=scripts

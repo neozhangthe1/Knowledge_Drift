@@ -1,3 +1,0 @@
-Topic Trends
-
-%rebase layout

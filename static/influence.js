@@ -1,5 +1,5 @@
-!function drawChart() {
-  var container = $(".influence-graph");
+function drawChart() {
+  var container = $(".influence-graph").html('');
 
   var margin = {left: 40, right: 0, top: 0, bottom: 30},
       width = container.innerWidth() - margin.left - margin.right,
@@ -24,7 +24,7 @@
     .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-  d3.tsv("/static/influence.tsv", function(error, data) {
+  d3.tsv("influence/trends.tsv", function(error, data) {
     data.forEach(function(d) {
       d.date = parseDate(d.date);
       d.value = +d.value;
@@ -53,10 +53,10 @@
         .style("text-anchor", "end")
         .text("Influence");
   });
-}();
+};
 
-!function drawPie() {
-  var container = $(".influence-pie")
+function drawPie() {
+  var container = $(".influence-pie").html('');
   var w = container.innerWidth();
       h = container.innerHeight();
       r = Math.min(w, h) / 2;
@@ -97,4 +97,25 @@
           })
           .attr("text-anchor", "middle")
           .text(function(d, i) { return data[i].label; });
+};
+
+!function() {
+  $('.topics').on('click', '.topic-list li', function() {
+    if ($(this).hasClass('active')) return;
+    var index = $(this).data('index');
+    $('.topic-analysis:visible').fadeOut();
+    $('.topic-analysis.index' + index).fadeIn();
+    $(this).siblings().removeClass('active');
+    $(this).addClass('active');
+  });
+}();
+
+!function() {
+  $(window).resize(function() {
+    drawPie();
+    drawChart();
+  }).trigger('resize');
+  $('.topics').load('influence/topics/latest', function() {
+    $('.topic-list li:nth(0)').click();
+  });
 }();
