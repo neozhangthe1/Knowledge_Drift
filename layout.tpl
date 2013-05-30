@@ -16,9 +16,9 @@
         <div class="navbar-inner">
             <a class="brand" href="/">SAE</a>
             <ul class="nav">
-                <li> <a href="../academic/search">Academic</a> </li>
-                <li> <a href="../patent/search">Patent</a> </li>
-                <li> <a href="../weibo/search">Weibo</a> </li>
+                <li> <a href="/academic/search">Academic</a> </li>
+                <li> <a href="/patent/search">Patent</a> </li>
+                <li> <a href="/weibo/search">Weibo</a> </li>
             </ul>
         </div>
     </div>
