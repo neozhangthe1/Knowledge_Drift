@@ -3,10 +3,11 @@
 import os.path
 from bottle import route, run, template, view, static_file, request, urlencode
 from dcclient import DataCenterClient
-
+from topic_trend_analysis import TopicTrend
 import sample_data
 
 client = DataCenterClient("tcp://10.1.1.211:32011")
+topic_trend_client = TopicTrend()
 
 
 @route('/')
@@ -69,6 +70,12 @@ def search(data):
         query=q
     )
 
+@route('/<data>/topictrends/data')
+def topic_trends(data):
+    q = request.query.q or ''
+    print 'rendering trends for', q, 'on', data
+    return topic_trend_client.query_topic_trends(q)
+
 
 @route('/<data>/<uid:int>/influence/trends.tsv')
 def influence_trends(data, uid):
@@ -93,4 +100,4 @@ def static(path):
     curdir = os.path.dirname(os.path.realpath(__file__))
     return static_file(path, root=curdir + '/static/')
 
-run(server='auto', host='0.0.0.0', port=8080, reloader=True, debug=True)
+run(server='auto', host='0.0.0.0', port=8081, reloader=True, debug=True)

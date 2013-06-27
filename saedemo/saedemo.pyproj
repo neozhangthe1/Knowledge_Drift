@@ -1,0 +1,56 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>70f34f44-79bb-419c-be90-97b6342bfabc</ProjectGuid>
+    <ProjectHome>..\</ProjectHome>
+    <StartupFile>server.py</StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <InterpreterId>2af0f10d-7135-4994-9156-5d01c9c11b7e</InterpreterId>
+    <InterpreterVersion>2.7</InterpreterVersion>
+    <Name>saedemo</Name>
+    <RootNamespace>saedemo</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="bottle.py" />
+    <Compile Include="sample_data.py" />
+    <Compile Include="server.py" />
+    <Compile Include="dcclient\dcclient.py" />
+    <Compile Include="dcclient\interface_pb2.py" />
+    <Compile Include="dcclient\rpc_pb2.py" />
+    <Compile Include="dcclient\__init__.py" />
+    <Compile Include="teclient\extract_aminer.py" />
+    <Compile Include="teclient\teclient.py" />
+    <Compile Include="teclient\__init__.py" />
+    <Compile Include="topic_trend_analysis.py" />
+    <Compile Include="topictrend\__init__.py" />
+    <Content Include="static\bootstrap\css\bootstrap-responsive.css" />
+    <Content Include="static\bootstrap\css\bootstrap-responsive.min.css" />
+    <Content Include="static\bootstrap\css\bootstrap.css" />
+    <Content Include="static\bootstrap\css\bootstrap.min.css" />
+    <Content Include="static\bootstrap\img\glyphicons-halflings-white.png" />
+    <Content Include="static\bootstrap\img\glyphicons-halflings.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="dcclient" />
+    <Folder Include="teclient\" />
+    <Folder Include="static\" />
+    <Folder Include="static\bootstrap\" />
+    <Folder Include="static\bootstrap\css" />
+    <Folder Include="static\bootstrap\img" />
+    <Folder Include="topictrend\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+</Project>
