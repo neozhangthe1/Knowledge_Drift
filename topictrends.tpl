@@ -1,42 +1,14 @@
-<!DOCTYPE html>
-<!-- saved from url=(0033)http://bost.ocks.org/mike/sankey/ -->
-<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta charset="utf-8">
-<title>Sankey Diagram</title>
-<style>
+<!-- <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta charset="utf-8">
+<title>Sankey Diagram</title> -->
+<link rel="stylesheet" type="text/css" href="/static/css/topictrend.css">
 
-@import url(/static/css/topictrend.css);
+<div class="navbar-form pull-left" style="padding-bottom:20px">
+  <input type="text" class="span2" id="topic-trend-search-text">
+  <!-- <button type="submit" class="btn" id="topic-trend-search">Submit</button> -->
+</div>
 
-#chart {
-  height: 400px;
-  width: 1600px;
-}
-
-.node rect {
-  cursor: move;
-  fill-opacity: .9;
-  shape-rendering: crispEdges;
-}
-
-.node text {
-  pointer-events: none;
-  text-shadow: 0 1px 0 #fff;
-}
-
-.link {
-  fill: none;
-  /*stroke: #000;*/
-  /*stroke-opacity: .2;*/
-}
-
-.link:hover {
-  stroke-opacity: .5;
-}
-
-</style>
-</head><body>
-
-
-<p id="chart">
+<div id="chart" class="pull-left">
+</div>
 <script src="/static/d3.v3.min.js"></script>
 <script src="/static/js/sankey.js"></script>
 <script>
@@ -50,10 +22,9 @@ var formatNumber = d3.format(",.0f"),
     color = d3.scale.category20();
 
 var svg = d3.select("#chart").append("svg")
-    .attr("width", width + margin.left + margin.right)
+    .attr("width", 1600)//width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
 
 var sankey = d3.sankey()
     .nodeWidth(1)
@@ -76,13 +47,35 @@ var area = d3.svg.area()
 var y = d3.scale.linear()
     .range([height, 0]);
 
+d3.select("#topic-trend-search").on("click",function(e){
+  render_topic($("#topic-trend-search-text").val(), 0.0001);
+})
 
-d3.json("/academic/render?q=data+mining&threshold=0.00005", function(energy) {
+
+function resize_chart(){
+  d3.select("#chart").style("width", (window.width - 2 * 50)+"px");
+}
+
+resize_chart();
+window.onresize = resize_chart();
+render_topic("interaction design", 0.0001);
+document.getElementById("topic-trend-search-text").value ="interaction design"
+
+function render_topic(q, threshold){
+  svg.remove();
+  svg = d3.select("#chart").append("svg")
+    .attr("width", 1600)//width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+    .attr("id","trend")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  d3.json("/academic/render?q="+q+"&threshold="+threshold, function(energy) {
+
   svg.append("linearGradient")
     .attr("id", "temperature-gradient")
     .attr("gradientUnits", "userSpaceOnUse")
-    .attr("x1", 0).attr("y1", y(50))
-    .attr("x2", 0).attr("y2", y(60))
+    .attr("x1", 0).attr("y1", y(5))
+    .attr("x2", 0).attr("y2", y(10))
   .selectAll("stop")
     .data([
       {offset: "0%", color: "steelblue"},
@@ -106,9 +99,24 @@ d3.json("/academic/render?q=data+mining&threshold=0.00005", function(energy) {
       .enter().append("path")
       .attr("class", "link")
       .attr("d", path)
-      .style("stroke-width", function(d) { return 2 })
+      .style("stroke-width", function(d) { return 20 })
       .style("fill", function(d) { 
-          return d.color = color(d.source.name[0]);//"url(#temperature-gradient)";//
+        var key = "gradient-"+d.source_index+"-"+d.target_index;
+        svg.append("linearGradient")
+        .attr("id", key)
+        .attr("gradientUnits", "userSpaceOnUse")
+        .attr("x1", d.source.x).attr("y1", 0)
+        .attr("x2", d.target.x).attr("y2", 0)
+        .selectAll("stop")
+        .data([
+          {offset: "0%", color: color(d.source.name[0])},
+          // {offset: "50%", color: "gray"},
+          {offset: "100%", color: color(d.target.name[0])}
+        ])
+      .enter().append("stop")
+        .attr("offset", function(d) { return d.offset; })
+        .attr("stop-color", function(d) { return d.color; });
+          return d.color = "url(#"+key+")";//color(d.source.name[0]);//
       })
       .sort(function(a, b) { return b.dy - a.dy; });
 
@@ -152,6 +160,9 @@ d3.json("/academic/render?q=data+mining&threshold=0.00005", function(energy) {
     link.attr("d", path);
   }
 });
+}
+
 
 </script>
-</body></html>
+
+%rebase layout
