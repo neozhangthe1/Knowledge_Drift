@@ -10,9 +10,12 @@ term_extractor = TermExtractorClient()
 
 class TopicTrend(object):
     def __init__(self):
+        print "INIT TOPIC TREND"
         self.parse_topic_model()
+        self.parse_topic_graph()
 
     def parse_topic_model(self):
+        print "PARSING TOPIC MODEL"
         f = open("G:\\topic-evolution\\model_dat_130627.out")
         f_v = open("G:\\word.in")
         count = -1 #line count
@@ -67,7 +70,79 @@ class TopicTrend(object):
         self.p_topic_given_term_y = p_topic_given_term_y
         self.vocab = vocab
 
-    def query_topic_trends(self, query, threshold=0.01):
+    def parse_topic_graph(self):
+        print "PARSING TOPIC GRAPH"
+        f_graph = open("G:\\topic-evolution\\topicgraph_130627.out")
+        f_topic = open("G:\\topic-evolution\\topic_130627.out")
+        flag = 0
+        count = 0
+        index = 0 #index of nodes
+        start_time = 2002
+        cur_year = None 
+        cur_time = None
+        node_meta = defaultdict(dict)
+        link_meta = []
+        node_dict = {}
+        graph = {"nodes":[], "links":[]}
+        for line in f_topic:
+            if "#" in line:
+                x = line.strip().strip(":").split("#")
+                cur_year = int(x[1]) + start_time
+                continue
+            elif ":" in line and line[:5] == "Topic":
+                flag = 0
+                x = line.strip().split(":")
+                w = float(x[1].strip())
+                id = x[0].split(" ")[1]
+                continue
+            else:
+                if flag == 0:
+                    l1 = line.strip().split("0")[0].strip()
+                    flag += 1
+                elif flag == 1:
+                    l2 = line.strip().split("0")[0].strip()
+                    flag += 1
+                elif flag == 2:
+                    flag += 1
+                    l3 = line.strip().split("0")[0].strip()
+                    node_meta[cur_year-start_time][int(id)] = {"label":l1+"-"+l2+"-"+l3, "weight":w, "source":[], "target":[], "sigma_1":0., "sigma_2":0.} #simga is the sum of link weight use for normalization
+        for line in f_graph:
+            if ":" in line:
+                cur_time = int(line.split(":")[0])
+            else:
+                x = line.strip("\n").split(" ")
+                node_meta[cur_time][int(x[0])]["target"].append({"key":str(cur_time+1)+"-"+str(x[1]), "weight":float(x[2])})
+                node_meta[cur_time+1][int(x[1])]["source"].append({"key":str(cur_time)+"-"+str(x[0]), "weight":float(x[2])})
+                node_meta[cur_time][int(x[0])]["sigma_1"] += float(x[2])
+                node_meta[cur_time+1][int(x[1])]["sigma_2"] += float(x[2])
+                link_meta.append({"source":str(cur_time)+"-"+str(x[0]), "target":str(cur_time+1)+"-"+str(x[1]), "similarity":float(x[2])})
+        for y in node_meta:
+            for n in node_meta[y]:
+                graph["nodes"].append({"name":node_meta[y][n]["label"], "w":node_meta[y][n]["weight"], "pos":y})   
+                node_dict[str(y)+"-"+str(n)] = index
+                index += 1
+        for y in node_meta:
+            for n in node_meta[y]:
+                source_weight = node_meta[y][n]["weight"] #weight of the source topic
+                source_sigma = node_meta[y][n]["sigma_1"] #sum of the link weight of source topic
+                for t in node_meta[y][n]["target"]:
+                    x = t["key"].split("-")
+                    link_weight = t["weight"]
+                    target = node_meta[int(x[0])][int(x[1])]
+                    target_weight = target["weight"]
+                    target_sigma = target["sigma_2"]
+                    graph["links"].append({"source":node_dict[str(y)+"-"+str(n)],
+                                          "target":node_dict[t["key"]],
+                                          "w1":source_weight * link_weight / source_sigma,
+                                          "w2":target_weight * link_weight / target_sigma}) #topic weight * link weight / sigma
+        self.node_meta = node_meta
+        self.link_meta = link_meta
+        self.node_dict = node_dict
+        self.start_year = start_time
+        self.topic_graph = graph
+
+    def query_topic_trends(self, query, threshold=0.0001):
+        print "MATCHING QUERY TO TOPICS", query, threshold
         query = query.lower()
         words = []
         choose_topic = defaultdict(list)
@@ -89,9 +164,80 @@ class TopicTrend(object):
                 for i in range(len(p_topic)):
                     if p_topic[i] > threshold:
                         choose_topic[y].append(i)
+        print len(choose_topic), "topics are choosed"
         return self.render_topic_graph(choose_topic)
 
+    """
+    backup method
+    """
+    def query_topic_trends_or(self, query, threshold=0.0001):
+        print "MATCHING QUERY TO TOPICS", query, threshold
+        query = query.lower()
+        words = []
+        choose_topic = defaultdict(list)
+        #check if the term is in the vocabulary
+        if query in self.vocab:
+            print "FOUND WORD", query, self.vocab[query]
+            words.append(self.vocab[query])
+        #if not, check if the words in the term exists in the vocabulary
+        else:
+            terms = query.split(" ")
+            for t in terms:
+                if t in self.vocab:
+                    print "FOUND WORD", t, self.vocab[t]
+                    words.append(self.vocab[t]) 
+        #choose topics related to the query term
+        for y in self.p_topic_given_term_y:
+            for t in words:
+                p_topic = self.p_topic_given_term_y[y][t]
+                for i in range(len(p_topic)):
+                    if p_topic[i] > threshold:
+                        choose_topic[y].append(i)
+        print len(choose_topic), "topics are choosed"
+        return self.render_topic_graph_or(choose_topic)
+
+    """
+    backup method
+    """
     def render_topic_graph(self, nodes):
+        pass 
+
+    def render_topic_graph(self, nodes):
+        print "RENDERING TOPIC GRAPH"
+        graph = {"nodes":[], "links":[]}
+        node_meta = self.node_meta
+        link_meta = self.link_meta
+        node_dict = {}
+        index = 0
+        for y in nodes:
+            for n in nodes[y]:
+                graph["nodes"].append({"name":node_meta[y][n]["label"], "w":node_meta[y][n]["weight"], "pos":y})   
+                node_dict[str(y)+"-"+str(n)] = index
+                index += 1
+        sigma_1 = defaultdict(float)
+        sigma_2 = defaultdict(float)
+        for link in link_meta:
+            if node_dict.has_key(link["source"]) and node_dict.has_key(link["target"]):
+                 sigma_1[link["source"]] += link["similarity"]
+                 sigma_2[link["target"]] += link["similarity"]
+        for y in nodes:
+            for n in nodes[y]:
+                source_weight = node_meta[y][n]["weight"] #weight of the source topic
+                source_sigma = sigma_1[str(y)+"-"+str(n)] #sum of the link weight of source topic
+                for t in node_meta[y][n]["target"]:
+                    x = t["key"].split("-")
+                    link_weight = t["weight"]
+                    target = node_meta[int(x[0])][int(x[1])]
+                    target_weight = target["weight"]
+                    target_sigma = sigma_2[t["key"]]
+                    if (node_dict.has_key(str(y)+"-"+str(n))) and (node_dict.has_key(t["key"])): 
+                        graph["links"].append({"source":node_dict[str(y)+"-"+str(n)],
+                                              "target":node_dict[t["key"]],
+                                              "w1":source_weight * link_weight / source_sigma,
+                                              "w2":target_weight * link_weight / target_sigma}) #topic weight * link weight / sigma
+        return graph
+
+    def render_topic_graph_old(self, nodes):
         f_graph = open("G:\\topic-evolution\\topicgraph_130627.out")
         f_topic = open("G:\\topic-evolution\\topic_130627.out")
         flag = 0
@@ -141,10 +287,74 @@ class TopicTrend(object):
                                            "value":node_meta[cur_time+1][int(x[1])]["weight"]})
         return graph
 
-def main():
-    trend = TopicTrend()
-    trend.query_topic_trend("data mining")
+    def render_topic_graph_complete(self):
+        f_graph = open("G:\\topic-evolution\\topicgraph_130627.out")
+        f_topic = open("G:\\topic-evolution\\topic_130627.out")
+        flag = 0
+        count = 0
+        index = 0 #index of nodes
+        start_time = 2002
+        cur_year = None 
+        cur_time = None
+        node_meta = defaultdict(dict)
+        link_meta = []
+        node_dict = {}
+        graph = {"nodes":[], "links":[]}
+        for line in f_topic:
+            if "#" in line:
+                x = line.strip().strip(":").split("#")
+                cur_year = int(x[1]) + start_time
+                continue
+            elif ":" in line and line[:5] == "Topic":
+                flag = 0
+                x = line.strip().split(":")
+                w = float(x[1].strip())
+                id = x[0].split(" ")[1]
+                continue
+            else:
+                if flag == 0:
+                    l1 = line.strip().split("0")[0].strip()
+                    flag += 1
+                elif flag == 1:
+                    l2 = line.strip().split("0")[0].strip()
+                    flag += 1
+                elif flag == 2:
+                    flag += 1
+                    l3 = line.strip().split("0")[0].strip()
+                    node_meta[cur_year-start_time][int(id)] = {"label":l1+"-"+l2+"-"+l3, "weight":w, "source":[], "target":[], "sigma_1":0., "sigma_2":0.} #simga is the sum of link weight use for normalization
+        for line in f_graph:
+            if ":" in line:
+                cur_time = int(line.split(":")[0])
+            else:
+                x = line.strip("\n").split(" ")
+                node_meta[cur_time][int(x[0])]["target"].append({"key":str(cur_time+1)+"-"+str(x[1]), "weight":float(x[2])})
+                node_meta[cur_time+1][int(x[1])]["source"].append({"key":str(cur_time)+"-"+str(x[0]), "weight":float(x[2])})
+                node_meta[cur_time][int(x[0])]["sigma_1"] += float(x[2])
+                node_meta[cur_time+1][int(x[1])]["sigma_2"] += float(x[2])
+                link_meta.append({"source":str(cur_time)+"-"+str(x[0]), "target":str(cur_time+1)+"-"+str(x[1]), "similarity":float(x[2])})
+        for y in node_meta:
+            for n in node_meta[y]:
+                graph["nodes"].append({"name":node_meta[y][n]["label"], "w":node_meta[y][n]["weight"], "pos":y})   
+                node_dict[str(y)+"-"+str(n)] = index
+                index += 1
+        for y in node_meta:
+            for n in node_meta[y]:
+                source_weight = node_meta[y][n]["weight"] #weight of the source topic
+                source_sigma = node_meta[y][n]["sigma_1"] #sum of the link weight of source topic
+                for t in node_meta[y][n]["target"]:
+                    x = t["key"].split("-")
+                    link_weight = t["weight"]
+                    target = node_meta[int(x[0])][int(x[1])]
+                    target_weight = target["weight"]
+                    target_sigma = target["sigma_2"]
+                    graph["links"].append({"source":node_dict[str(y)+"-"+str(n)],
+                                          "target":node_dict[t["key"]],
+                                          "w1":source_weight * link_weight / source_sigma,
+                                          "w2":target_weight * link_weight / target_sigma}) #topic weight * link weight / sigma
+        return graph
 
+def main():
+    pass
 if __name__ == "__main__":
     pass
     #main()

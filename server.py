@@ -70,11 +70,12 @@ def search(data):
         query=q
     )
 
-@route('/<data>/topictrends/data')
+@route('/<data>/render')
 def topic_trends(data):
     q = request.query.q or ''
-    print 'rendering trends for', q, 'on', data
-    return topic_trend_client.query_topic_trends(q)
+    threshold = request.query.threshold or ''
+    print 'rendering trends for', q, threshold, 'on', data
+    return topic_trend_client.query_topic_trends(q, float(threshold))
 
 
 @route('/<data>/<uid:int>/influence/trends.tsv')

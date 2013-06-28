@@ -7,7 +7,8 @@
 @import url(/static/css/topictrend.css);
 
 #chart {
-  height: 800px;
+  height: 400px;
+  width: 1600px;
 }
 
 .node rect {
@@ -41,8 +42,8 @@
 <script>
 
 var margin = {top: 1, right: 1, bottom: 6, left: 1},
-    width = 1600- margin.left - margin.right,
-    height = 600 - margin.top - margin.bottom;
+    width = 1280- margin.left - margin.right,
+    height = 300 - margin.top - margin.bottom;
 
 var formatNumber = d3.format(",.0f"),
     format = function(d) { return formatNumber(d) + " TWh"; },
@@ -55,13 +56,45 @@ var svg = d3.select("#chart").append("svg")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 var sankey = d3.sankey()
-    .nodeWidth(15)
+    .nodeWidth(1)
     .nodePadding(10)
     .size([width, height]);
 
 var path = sankey.link();
 
-d3.json("/academic/topictrends/data?q=data+mining", function(energy) {
+var area = d3.svg.area()
+          .x(function(d){
+            return d.x;
+          })
+          .y0(function(d){
+            return d.y0;
+          })
+          .y1(function(d){
+            return d.y1;
+          });
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+
+d3.json("/academic/render?q=data+mining&threshold=0.00005", function(energy) {
+  svg.append("linearGradient")
+    .attr("id", "temperature-gradient")
+    .attr("gradientUnits", "userSpaceOnUse")
+    .attr("x1", 0).attr("y1", y(50))
+    .attr("x2", 0).attr("y2", y(60))
+  .selectAll("stop")
+    .data([
+      {offset: "0%", color: "steelblue"},
+      {offset: "50%", color: "gray"},
+      {offset: "100%", color: "red"}
+    ])
+  .enter().append("stop")
+    .attr("offset", function(d) { return d.offset; })
+    .attr("stop-color", function(d) { return d.color; });
+
+  var x = d3.scale.linear()
+        .range([2002,2013])
 
   sankey
       .nodes(energy.nodes)
@@ -73,8 +106,10 @@ d3.json("/academic/topictrends/data?q=data+mining", function(energy) {
       .enter().append("path")
       .attr("class", "link")
       .attr("d", path)
-      .style("stroke-width", function(d) { return Math.max(1, d.dy); })
-      .style("stroke", function(d) { return d.color = color(d.cluster) })
+      .style("stroke-width", function(d) { return 2 })
+      .style("fill", function(d) { 
+          return d.color = color(d.source.name[0]);//"url(#temperature-gradient)";//
+      })
       .sort(function(a, b) { return b.dy - a.dy; });
 
   link.append("title")
@@ -94,7 +129,7 @@ d3.json("/academic/topictrends/data?q=data+mining", function(energy) {
       .attr("height", function(d) { return d.dy; })
       .attr("width", sankey.nodeWidth())
       .style("fill", function(d) {
-       return d.color = color(d.cluster); 
+       return d.color = color(d.name[0]);
      })
       .style("stroke", function(d) { return d.color;})//d3.rgb(d.color).darker(2); })
     .append("title")
@@ -106,7 +141,7 @@ d3.json("/academic/topictrends/data?q=data+mining", function(energy) {
       .attr("dy", ".35em")
       .attr("text-anchor", "end")
       .attr("transform", null)
-      .text(function(d) { return d.name; })
+      .text(function(d) { return d.name.split("-")[0]; })
     .filter(function(d) { return d.x < width / 2; })
       .attr("x", 6 + sankey.nodeWidth())
       .attr("text-anchor", "start");
