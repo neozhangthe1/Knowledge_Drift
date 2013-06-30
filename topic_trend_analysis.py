@@ -7,6 +7,15 @@ import json
 data_center = DataCenterClient("tcp://10.1.1.211:32011")
 term_extractor = TermExtractorClient()
 
+class CommunityTrend(object):
+    def __init__(self):
+        pass
+
+    def queryCommunity(self, q):
+        pass
+
+    def getPersonByQuery(self, q):
+        pass
 
 class TopicTrend(object):
     def __init__(self):
@@ -199,7 +208,7 @@ class TopicTrend(object):
     """
     backup method
     """
-    def render_topic_graph(self, nodes):
+    def render_topic_graph_or(self, nodes):
         pass 
 
     def render_topic_graph(self, nodes):
@@ -352,6 +361,126 @@ class TopicTrend(object):
                                           "w1":source_weight * link_weight / source_sigma,
                                           "w2":target_weight * link_weight / target_sigma}) #topic weight * link weight / sigma
         return graph
+
+def build_topic_model():
+    import logging, gensim, bz2
+    import re
+    from collections import defaultdict
+    from sklearn.feature_extraction.text import CountVectorizer
+    import codecs
+    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+    f_out = codecs.open("topic_data", "w", "utf-8")
+    #stoplist = 
+    f = open("d:\\share\\abstracts.txt")
+    flag = 0
+    titles = []
+    abstracts = []
+    confs = []
+    ids = []
+    documents = []
+    years = []
+    authors = []
+    content = None
+    for line in f:
+        if flag == 0:
+            ids.append(int(line.strip()))
+            flag += 1
+        elif flag == 1:
+            years.append(line.strip())
+            flag += 1
+        elif flag == 2:
+            confs.append(line.strip())
+            flag += 1
+        elif flag == 3:
+            authors.append(line.strip())
+            flag += 1
+        elif flag == 4:
+            titles.append(line.strip())
+            content = line
+            flag += 1        
+        elif flag == 5:
+            abstracts.append(line.strip())
+            content += line
+            content.replace("\n"," ").lower()
+            documents.append(content)
+            flag = 0
+    vectorizer = CountVectorizer(stop_words="english", ngram_range=(1,3), max_df=0.95, min_df=10)#gram_range=(1,3)#gram_range=(1,3)
+    X = vectorizer.fit_transform(documents)
+    X = X.tolil();
+    vocab = vectorizer.get_feature_names()
+    for i in range(len(ids)):
+        line = str(ids[i])+";"
+        nz = X.getrow(i).nonzero()[1]
+        line += "#".join(vocab[t] for t in nz)
+        line += ";"
+        x = authors[i].split(",")
+        a = "#".join(x)
+        line += a;
+        line += ";"
+        line += str(years[i])
+        line += "0000\n"
+        f_out.write(line)
+
+def preprocess_topic_model():
+    import logging, gensim, bz2
+    import re
+    from collections import defaultdict
+    from sklearn.feature_extraction.text import CountVectorizer
+    import codecs
+    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+    f_out = codecs.open("topic_data", "w", "utf-8")
+    #stoplist = 
+    f = open("d:\\share\\abstracts.txt")
+    flag = 0
+    titles = []
+    abstracts = []
+    confs = []
+    ids = []
+    documents = []
+    years = []
+    authors = []
+    content = None
+    for line in f:
+        if flag == 0:
+            ids.append(int(line.strip()))
+            flag += 1
+        elif flag == 1:
+            years.append(line.strip())
+            flag += 1
+        elif flag == 2:
+            confs.append(line.strip())
+            flag += 1
+        elif flag == 3:
+            authors.append(line.strip())
+            flag += 1
+        elif flag == 4:
+            titles.append(line.strip())
+            content = line
+            flag += 1        
+        elif flag == 5:
+            abstracts.append(line.strip())
+            content += line
+            content.replace("\n"," ").lower()
+            documents.append(content)
+            flag = 0
+    vectorizer = CountVectorizer(stop_words="english", ngram_range=(1,3), max_df=0.95, min_df=10)#gram_range=(1,3)#gram_range=(1,3)
+    X = vectorizer.fit_transform(documents)
+    X = X.tolil();
+    vocab = vectorizer.get_feature_names()
+    for i in range(len(ids)):
+        line = str(ids[i])+";"
+        nz = X.getrow(i).nonzero()[1]
+        line += "#".join(vocab[t] for t in nz)
+        line += ";"
+        x = authors[i].split(",")
+        a = "#".join(x)
+        line += a;
+        line += ";"
+        line += str(years[i])
+        line += "0000\n"
+        f_out.write(line)
+
+
 
 def main():
     pass
@@ -546,17 +675,21 @@ def build_model():
     from sklearn.feature_extraction.text import CountVectorizer
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
     #stoplist = 
-    for y in [1981, 2010]:
+    lda = None
+    vectorizer = CountVectorizer(stop_words="english", ngram_range=(1,3), max_df=0.95, min_df=3)
+    titles = []
+    abstracts = []
+    confs = []
+    ids = []
+    documents = []
+    years = []
+    for y in range(1981, 2010):
         f = open("pubs\\"+str(y))
         flag = 0
-        titles = []
-        abstracts = []
-        confs = []
-        ids = []
-        documents = []
         content = None
         for line in f:
             if flag == 0:
+                years.append(y)
                 ids.append(int(line.strip()))
                 flag += 1
             elif flag == 1:
@@ -572,20 +705,27 @@ def build_model():
                 content.replace("\n"," ").lower()
                 documents.append(content)
                 flag = 0
-        vectorizer = CountVectorizer(stop_words="english", ngram_range=(1,3), max_df=0.95, min_df=5)
-        X = vectorizer.fit_transform(documents)
-        X = X.tolil();
-        doc_dict = defaultdict(list)
-        doc_ids = X.nonzero()[0]
-        word_ids = X.nonzero()[1]
-        for i in range(len(doc_ids)):
-            doc_dict[doc_ids[i]].append((word_ids[i], X[doc_ids[i],word_ids[i]]))    
-        id2word = {}
-        for w in vectorizer.vocabulary_:
-            id2word[vectorizer.vocabulary_[w]] = w
-        lda = gensim.models.ldamodel.LdaModel(corpus=doc_dict.values(), id2word=id2word, 
-                                              num_topics=30, update_every=1, chunksize=10, passes=1)    
-        hdp = gensim.models.hdpmodel.HdpModel(corpus=doc_dict.values(), id2word=id2word, chunksize=10)
+    X = vectorizer.fit_transform(documents)
+    X = X.tolil();
+    doc_dict = defaultdict(lambda : defaultdict(list))
+    doc_ids = X.nonzero()[0]
+    word_ids = X.nonzero()[1]
+    for i in range(len(doc_ids)):
+        doc_dict[years[i]][doc_ids[i]].append((word_ids[i], X[doc_ids[i], word_ids[i]]))    
+    id2word = {}
+    for w in vectorizer.vocabulary_:
+        id2word[vectorizer.vocabulary_[w]] = w
+    #online update topic model (streamming)
+    lda = None
+    for y in doc_dict:
+        if lda is None:
+            lda = gensim.models.ldamodel.LdaModel(corpus=doc_dict[y].values(), id2word=id2word, 
+                                        num_topics=30, update_every=1, chunksize=1, passes=1)   
+        else:
+            lda.update(corpus=doc_dict[y].values())
+        lda.save("lda-model-streamming-30-"+str(y))
+        
+    #hdp = gensim.models.hdpmodel.HdpModel(corpus=doc_dict.values(), id2word=id2word, chunksize=1)
 
 
 def parseTopic():
@@ -734,5 +874,9 @@ def parse_cluster():
     import json
     f_out.write(json.dumps(graph))
     f_out.close()
+
+def cluster_topics():
+    for i in range(1981, 2010):
+        pass
 
 

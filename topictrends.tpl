@@ -1,10 +1,9 @@
-<!-- <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta charset="utf-8">
-<title>Sankey Diagram</title> -->
 <link rel="stylesheet" type="text/css" href="/static/css/topictrend.css">
 
 <div class="navbar-form pull-left" style="padding-bottom:20px">
   <input type="text" class="span2" id="topic-trend-search-text">
-  <!-- <button type="submit" class="btn" id="topic-trend-search">Submit</button> -->
+  <input type="text" class="span2" id="topic-trend-search-threshold">
+  <button type="submit" class="btn" id="topic-trend-search">Submit</button>
 </div>
 
 <div id="chart" class="pull-left">
@@ -48,7 +47,7 @@ var y = d3.scale.linear()
     .range([height, 0]);
 
 d3.select("#topic-trend-search").on("click",function(e){
-  render_topic($("#topic-trend-search-text").val(), 0.0001);
+  render_topic($("#topic-trend-search-text").val(), parseFloat($("#topic-trend-search-threshold").val()));
 })
 
 
@@ -60,6 +59,7 @@ resize_chart();
 window.onresize = resize_chart();
 render_topic("interaction design", 0.0001);
 document.getElementById("topic-trend-search-text").value ="interaction design"
+document.getElementById("topic-trend-search-threshold").value =0.0001
 
 function render_topic(q, threshold){
   svg.remove();

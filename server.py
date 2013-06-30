@@ -7,7 +7,9 @@ from topic_trend_analysis import TopicTrend
 import sample_data
 
 client = DataCenterClient("tcp://10.1.1.211:32011")
+print "building topic trend"
 topic_trend_client = TopicTrend()
+print "building topic trend finished"
 
 
 @route('/')

@@ -58,7 +58,7 @@ class DataCenterClient(object):
         params = interface_pb2.IntQueryParams()
         params.ids.extend(ids)
         params.offset = 0
-        params.count = 1000
+        params.count = 100000
         params.returned_fields.extend(returned_fields)
         method = "PubService_getPublicationsById"
         response = request(self.endpoint, method, params)
@@ -162,25 +162,33 @@ def getPapersAbstract():
     f.next()
     ids = []
     import codecs
-    f_out = codecs.open("E:\\abstracts.txt","w",encoding="utf-8")
+    f_out = codecs.open("E:\\abstracts_1.txt","w",encoding="utf-8")
     from bs4 import UnicodeDammit
     for line in f:
         x = line.split("\n")
         ids.append(int(x[0]))
+    print len(ids)
     c = DataCenterClient("tcp://10.1.1.211:32011")
-    for i in range(len(ids)/10000):
-        print "DUMP %s"%(i*10000)
-        x = c.getPublicationsById(ids[i*10000:(i+1)*10000])
+    for i in range(len(ids)/1000):
+        print "DUMP %s"%(i*1000)
+        x = c.getPublicationsById(ids[i*1000:(i+1)*1000])
         id_set = set(ids)
         count = 0
         abs = {}
         conf = {}
+        authors = {}
+        title = {}
+        year = {}
         for p in x.publications:
             abs[p.id] = p.abs.replace("\n"," ").replace("\t"," ")
             conf[p.id] = p.jconf_name
+            authors[p.id] = ",".join([str(a) for a in p.author_ids])
+            title[p.id] = p.title
+            year[p.id] = p.year
         for p in abs:
             if len(abs[p]) > 2:
-                f_out.write("%s\n%s\n%s\n"%(conf[p],p,UnicodeDammit(abs[p]).markup))
+                f_out.write("%s\n%s\n%s\n%s\n%s\n%s\n"%(p,year[p],conf[p],authors[p],title[p],UnicodeDammit(abs[p]).markup))
+
 
 def getPapersAbstractYearConf():
     from collections import defaultdict
