@@ -55,7 +55,7 @@ def _GirvanNewmanGetModularity( G, deg_):
     #print "Modularity: %f" % Mod
     return Mod
 
-def UpdateDeg(deg_, A_):
+def UpdateDeg(deg_, A_, n):
     for i in range(0,n):
         deg = 0.0
         for j in range(0,n):
@@ -79,7 +79,7 @@ def Newman(G):
 
     #calculate the weighted degree for each node
     Orig_deg = {}
-    UpdateDeg(Orig_deg, A)
+    UpdateDeg(Orig_deg, A, n)
 
     #let's find the best split of the graph
     BestQ = 0.0
@@ -100,3 +100,4 @@ def Newman(G):
         print Bestcomps
     else:
         print "Best Q: %f" % BestQ
+    return Bestcomps

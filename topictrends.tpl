@@ -26,7 +26,7 @@ var svg = d3.select("#chart").append("svg")
 
 
 var sankey = d3.sankey()
-    .nodeWidth(1)
+    .nodeWidth(0)
     .nodePadding(10)
     .size([width, height]);
 
@@ -57,8 +57,8 @@ function resize_chart(){
 
 resize_chart();
 window.onresize = resize_chart();
-render_topic("interaction design", 0.0001);
-document.getElementById("topic-trend-search-text").value ="interaction design"
+render_topic("visualization", 0.0001);
+document.getElementById("topic-trend-search-text").value ="visualization"
 document.getElementById("topic-trend-search-threshold").value =0.0001
 
 function render_topic(q, threshold){
@@ -88,6 +88,46 @@ function render_topic(q, threshold){
 
   var x = d3.scale.linear()
         .range([2002,2013])
+
+  var axis = svg.append("g").selectAll(".axis")
+      .data(function(){
+        d = [];
+        for(var i = 2002; i < 2014; i++) d.push(i);
+        return d;
+      })
+      .enter().append("g")
+      .attr("class", "axis")
+      .attr("transform", function(d) { 
+        return "translate(" + (d-2002) * 150 + "," + 0 + ")"; 
+      })
+
+
+  axis.append("line")      
+      .attr("x1", function(d){
+        return 0;
+      })
+      .attr("x2", function(d){
+        return 0;
+      })
+      .attr("y1", function(d){
+        return 0;
+      })
+      .attr("y2", function(d){
+        return 400;
+      })
+      .style("stroke", function(d) { return "lightgray";})
+      .style("stroke-width", function(d) {return 1;})
+
+  axis.append("text")
+      .attr("x", -6)
+      .attr("y", 10)
+      .attr("dy", ".0em")
+      .attr("text-anchor", "end")
+      .attr("transform", null)
+      .text(function(d) { return d; })
+      .attr("x", 6)
+      .attr("text-anchor", "start")
+      .style("font-weight", "bold");
 
   sankey
       .nodes(energy.nodes)

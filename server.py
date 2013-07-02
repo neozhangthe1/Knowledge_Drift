@@ -72,6 +72,12 @@ def search(data):
         query=q
     )
 
+@route('/<data>/community')
+def search(data):
+    q = request.query.q or ''
+    print 'rendering community for', q, 'on', data
+    return topic_trend_client.query_community(q)
+
 @route('/<data>/render')
 def topic_trends(data):
     q = request.query.q or ''

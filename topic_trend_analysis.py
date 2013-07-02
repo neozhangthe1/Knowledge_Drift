@@ -3,7 +3,11 @@ from teclient.teclient import TermExtractorClient
 from collections import defaultdict
 from bs4 import UnicodeDammit
 import numpy
-import json
+import json    
+import gensim
+import pickle
+import networkx as nx
+from sklearn.cluster import Ward, KMeans
 data_center = DataCenterClient("tcp://10.1.1.211:32011")
 term_extractor = TermExtractorClient()
 
@@ -14,14 +18,297 @@ class CommunityTrend(object):
     def queryCommunity(self, q):
         pass
 
+    def extractPublication(self, p):
+        #extract key terms from abstract and title
+        text = p.title.lower() + " . " + p.abs.lower()
+        terms = term_extractor.extractTerms(text)
+        #extract citation network
+        children = []
+        children_ids = []
+        parents = []
+        parents_ids = []
+        authors = []
+        authors_ids = []
+        for x in p.cited_by_pubs:
+            children.append(str(x))
+            children_ids.append(x)
+        for x in p.cite_pubs:
+            parents.append(str(x))
+            parents_ids.append(x)
+        for x in p.authors:
+            authors.append(x)
+        return children_ids, parents_ids, terms, authors, authors_ids
+
     def getPersonByQuery(self, q):
-        pass
+        from community import Newman
+        x = data_center.searchAuthors(q)
+        pubs = []
+        author_name_dict = {}
+        year_publication = defaultdict(list)
+        key_terms = defaultdict(int)
+        year_terms = defaultdict(lambda: defaultdict(int))
+        document_terms = {}
+        document_authors = {}
+        networks = {}
+        #query authors and publications
+        for a in x.authors:
+            result = data_center.getPublicationsByAuthorId([a.naid])
+            for p in result.publications:
+                if p.year > 1990:
+                    children_ids, parents_ids, terms, authors, author_ids = self.extractPublication(p)
+                    for i in range(len(author_ids)):
+                        author_name_dict[author_ids[i]] = authors[i]
+                    year_publication[y].append(p.id)
+                    for t in terms:
+                        key_terms[t.lower()] += 1
+                        year_terms[p.year][t.lower()] += 1
+                    document_terms[p.id] = terms
+                    document_authors[p.id] = author_ids
+        #build coauthor networks
+        edge_dict = defaultdict(int)
+        for y in year_publication:
+            networks[y] = nx.Graph()
+            for p in year_publication[y]:
+                a = document_authors[p]
+                for i in range(len(a)):
+                    for j in range(j, len(a)):
+                        if a[i] < a[j]:
+                            x = (a[i], a[j])
+                        else:
+                            x = (a[j], a[i])
+                        edge_dict[x] += 1
+            for x in edge_dict:
+                networks[y].add_edge(x[0], x[1], weight=edge_dict[x])
+        for y in networks:
+            nx.connected_components(network[y])
+        #build graph
+        graph = {}
+        graph["nodes"] = []
+        graph["links"] = []
+        start_year = min(year_publication.keys())
+        node_index = 0
+        for t in terms_frequence:
+            pre = None
+            for y in year_terms_frequence:
+                if year_terms_frequence[y][t] > 0:
+                    graph["nodes"].append({"name":t, "pos":y-start_year})
+                    if pre is not None:
+                        graph["links"].append({"source": pre, "target": node_index, 
+                                               "value": year_terms_frequence[y][t]})
+                    pre = node_index
+                    node_index += 1
+
+
+    def getTopic(self, query):
+        x =  data_center.searchPublications(query)
+        key_term_set = set()
+        terms_frequence = defaultdict(int)
+        year_terms_frequence = defaultdict(lambda: defaultdict(int))
+        #extract key terms and citation network from publications
+        for p in x.publications:
+            if p.year <= 1980:
+                continue
+            children_ids, parents_ids, terms, authors, authors_ids = self.extractPublication(p)
+            for t in terms:
+                key_term_set.add(t)
+        #counting term frequence
+        for p in x.publications:
+            for t in key_term_set:
+                if t in p.title.lower() or t in p.abs.lower():
+                    terms_frequence[t] += 1
+                    year_terms_frequence[p.year][t] += 1
+        #normalize year term frequence
+        def normalize(ytf):
+            nor_ytf = defaultdict(lambda: defaultdict(int))
+            for y in ytf:
+                year_max = 0
+                for t in ytf[y]:
+                    if year_max < ytf[y][t]:
+                        year_max = ytf[y][t]
+                for t in ytf[y]:
+                    ytf[y][t] /= float(year_max)
+            return nor_ytf
+        normalized_year_terms_frequence = year_terms_frequence
+        #build graph
+        graph = {}
+        graph["nodes"] = []
+        graph["links"] = []
+        start_year = min(year_terms_frequence.keys())
+        node_index = 0
+        for t in terms_frequence:
+            pre = None
+            for y in year_terms_frequence:
+                if year_terms_frequence[y][t] > 0:
+                    graph["nodes"].append({"name":t, "pos":y-start_year})
+                    if pre is not None:
+                        graph["links"].append({"source": pre, "target": node_index, 
+                                               "value": year_terms_frequence[y][t]})
+                    pre = node_index
+                    node_index += 1
+                
+        #dump json        
+        return json.dumps(graph)
+        
+class TopicTrend_new(object):
+    def __init__(self):
+        print "INIT TOPIC TREND"
+
+    def load_topic_model(self):
+        models = {}
+        for y in range(1981, 2010):
+            models[y] = gensim.models.ldamodel.LdaModel.load("lda-model-streamming-30-"+str(y))
+        for y in models:
+            models[y].show_topics(30)
+        kmeans = pickle.load(open("kmeans"))
+        self.models = models
+        self.kmeans = kmeans
+
+    def build_graph(self):
+        labels = defaultdict(lambda :defaultdict(list))
+        nodes = defaultdict(dict)
+        graph = {"nodes":[], "links":[]}
+        for y in models:
+            for i in range(models[y].num_topics):
+                labels[y][kmeans.labels_[item_dict[y][i]]].append(i)
+        idx = 0
+        for y in labels:
+            for n in labels[y]:
+                label = ""
+                for i in labels[y][n]:
+                    label+=models[y].print_topic(i)
+                graph["nodes"].append({"name":label , "pos":y, "cluster":int(n)})
+                nodes[y][n] = idx
+                idx += 1
+        for y in labels:
+            for n in labels[y]:
+                if y > 0:
+                    if labels[y-1].has_key(n):
+                        graph["links"].append({"cluster":int(n),
+                                               "source":nodes[y][n],
+                                               "target":nodes[y-1][n],
+                                               "value":len(labels[y][n]),
+                                               })
+
+    def cluster_topic_model(self):
+        item_dict = defaultdict(dict)
+        X = []
+        index = 0
+        for y in models:
+            topics = models[y].state.sstats
+            for i in range(len(topics)):
+                X.append(topics[i])
+                item_dict[y][i] = index
+                index += 1
+        kmeans = KMeans(init='k-means++', n_clusters=30).fit(X)
+        dumps = open("kmeans", "w")
+        import pickle
+        pickle.dump(kmeans, dumps)
+        dumps.close()
+
 
 class TopicTrend(object):
     def __init__(self):
         print "INIT TOPIC TREND"
         self.parse_topic_model()
         self.parse_topic_graph()
+
+    def query_topic_trends(self, query, threshold=0.0001):
+        print "MATCHING QUERY TO TOPICS", query, threshold
+        query = query.lower()
+        words = []
+        choose_topic = defaultdict(list)
+        #check if the term is in the vocabulary
+        if query in self.vocab:
+            print "FOUND WORD", query, self.vocab[query]
+            words.append(self.vocab[query])
+        #if not, check if the words in the term exists in the vocabulary
+        else:
+            terms = query.split(" ")
+            for t in terms:
+                if t in self.vocab:
+                    print "FOUND WORD", t, self.vocab[t]
+                    words.append(self.vocab[t]) 
+        #choose topics related to the query term
+        for y in self.p_topic_given_term_y:
+            for t in words:
+                p_topic = self.p_topic_given_term_y[y][t]
+                for i in range(len(p_topic)):
+                    if p_topic[i] > threshold:
+                        choose_topic[y].append(i)
+        print len(choose_topic), "topics are choosed"
+        return self.render_topic_graph(choose_topic)        
+
+    def query_person(self, q):
+        x = data_center.searchAuthors(q)
+        authors = []
+        for a in x.authors:
+            authors.append({"id":a.naid, "names":a.names, "email":a.email})
+        return authors
+
+    def query_document(self, q):
+        x = data_center.searchPublications(q)
+
+    def query_community(self, q):
+        from community import Newman
+        x = data_center.searchAuthors(q)
+        pubs = []
+        author_name_dict = {}
+        year_publication = defaultdict(list)
+        key_terms = defaultdict(int)
+        year_terms = defaultdict(lambda: defaultdict(int))
+        document_terms = {}
+        document_authors = {}
+        networks = {}
+        #query authors and publications
+        for a in x.authors:
+            result = data_center.getPublicationsByAuthorId([a.naid])
+            for p in result.publications:
+                if p.year > 1990:
+                    children_ids, parents_ids, terms, authors, author_ids = extractPublication(p)
+                    for i in range(len(author_ids)):
+                        author_name_dict[author_ids[i]] = authors[i]
+                    year_publication[p.year].append(p.id)
+                    for t in terms:
+                        key_terms[t.lower()] += 1
+                        year_terms[p.year][t.lower()] += 1
+                    document_terms[p.id] = terms
+                    document_authors[p.id] = author_ids
+        #build coauthor networks
+        edge_dict = defaultdict(int)
+        for y in year_publication:
+            networks[y] = nx.Graph()
+            for p in year_publication[y]:
+                a = document_authors[p]
+                for i in range(len(a)):
+                    for j in range(j, len(a)):
+                        if a[i] < a[j]:
+                            x = (a[i], a[j])
+                        else:
+                            x = (a[j], a[i])
+                        edge_dict[x] += 1
+            for x in edge_dict:
+                networks[y].add_edge(x[0], x[1], weight=edge_dict[x])
+        communities = {}
+        for y in networks:
+            communities[y] = Newman(networks[y])
+        return communities
+        ##build graph
+        #graph = {}
+        #graph["nodes"] = []
+        #graph["links"] = []
+        #start_year = min(year_publication.keys())
+        #node_index = 0
+        #for t in terms_frequence:
+        #    pre = None
+        #    for y in year_terms_frequence:
+        #        if year_terms_frequence[y][t] > 0:
+        #            graph["nodes"].append({"name":t, "pos":y-start_year})
+        #            if pre is not None:
+        #                graph["links"].append({"source": pre, "target": node_index, 
+        #                                       "value": year_terms_frequence[y][t]})
+        #            pre = node_index
+        #            node_index += 1
+
 
     def parse_topic_model(self):
         print "PARSING TOPIC MODEL"
@@ -150,31 +437,53 @@ class TopicTrend(object):
         self.start_year = start_time
         self.topic_graph = graph
 
-    def query_topic_trends(self, query, threshold=0.0001):
-        print "MATCHING QUERY TO TOPICS", query, threshold
-        query = query.lower()
-        words = []
-        choose_topic = defaultdict(list)
-        #check if the term is in the vocabulary
-        if query in self.vocab:
-            print "FOUND WORD", query, self.vocab[query]
-            words.append(self.vocab[query])
-        #if not, check if the words in the term exists in the vocabulary
-        else:
-            terms = query.split(" ")
-            for t in terms:
-                if t in self.vocab:
-                    print "FOUND WORD", t, self.vocab[t]
-                    words.append(self.vocab[t]) 
-        #choose topics related to the query term
-        for y in self.p_topic_given_term_y:
-            for t in words:
-                p_topic = self.p_topic_given_term_y[y][t]
-                for i in range(len(p_topic)):
-                    if p_topic[i] > threshold:
-                        choose_topic[y].append(i)
-        print len(choose_topic), "topics are choosed"
-        return self.render_topic_graph(choose_topic)
+    """
+    util: extracting publication result
+    """
+    def extractPublication(self, p):
+        #extract key terms from abstract and title
+        text = p.title.lower() + " . " + p.abs.lower()
+        terms = term_extractor.extractTerms(text)
+        #extract citation network
+        children = []
+        children_ids = []
+        parents = []
+        parents_ids = []
+        authors = []
+        authors_ids = []
+        for x in p.cited_by_pubs:
+            children.append(str(x))
+            children_ids.append(x)
+        for x in p.cite_pubs:
+            parents.append(str(x))
+            parents_ids.append(x)
+        for x in p.authors:
+            authors.append(x)
+        return children_ids, parents_ids, terms, authors, authors_ids
+
+    """
+    util: extracting person result
+    """
+    def extractPerson(self, p):
+        #extract key terms from abstract and title
+        name = p.title.lower() + " . " + p.abs.lower()
+        terms = term_extractor.extractTerms(text)
+        #extract citation network
+        children = []
+        children_ids = []
+        parents = []
+        parents_ids = []
+        authors = []
+        authors_ids = []
+        for x in p.cited_by_pubs:
+            children.append(str(x))
+            children_ids.append(x)
+        for x in p.cite_pubs:
+            parents.append(str(x))
+            parents_ids.append(x)
+        for x in p.authors:
+            authors.append(x)
+        return children_ids, parents_ids, terms, authors, authors_ids
 
     """
     backup method
@@ -489,77 +798,9 @@ if __name__ == "__main__":
     #main()
 
 
-def extractPublication(p):
-    #extract key terms from abstract and title
-    text = p.title.lower() + " . " + p.abs.lower()
-    terms = term_extractor.extractTerms(text)
-    #extract citation network
-    children = []
-    children_ids = []
-    parents = []
-    parents_ids = []
-    for x in p.cited_by_pubs:
-        children.append(str(x))
-        children_ids.append(x)
-    for x in p.cite_pubs:
-        parents.append(str(x))
-        parents_ids.append(x)
 
-    return children_ids, parents_ids, terms
 
-def get_topic(query):
-    x =  data_center.searchPublications(query)
-    key_term_set = set()
-    terms_frequence = defaultdict(int)
-    year_terms_frequence = defaultdict(lambda: defaultdict(int))
-    
-    #extract key terms and citation network from publications
-    for p in x.publications:
-        if p.year <= 1980:
-            continue
-        children, parents, terms = extractPublication(p)
-        for t in terms:
-            key_term_set.add(t)
 
-    #counting term frequence
-    for p in x.publications:
-        for t in key_term_set:
-            if t in p.title.lower() or t in p.abs.lower():
-                terms_frequence[t] += 1
-                year_terms_frequence[p.year][t] += 1
-
-    #normalize year term frequence
-    def normalize(ytf):
-        nor_ytf = defaultdict(lambda: defaultdict(int))
-        for y in ytf:
-            year_max = 0
-            for t in ytf[y]:
-                if year_max < ytf[y][t]:
-                    year_max = ytf[y][t]
-            for t in ytf[y]:
-                ytf[y][t] /= float(year_max)
-        return nor_ytf
-    normalized_year_terms_frequence = year_terms_frequence
-
-    #build graph
-    graph = {}
-    graph["nodes"] = []
-    graph["links"] = []
-    start_year = min(year_terms_frequence.keys())
-    node_index = 0
-    for t in terms_frequence:
-        pre = None
-        for y in year_terms_frequence:
-            if year_terms_frequence[y][t] > 0:
-                graph["nodes"].append({"name":t, "pos":y-start_year})
-                if pre is not None:
-                    graph["links"].append({"source": pre, "target": node_index, 
-                                           "value": year_terms_frequence[y][t]})
-                pre = node_index
-                node_index += 1
-                
-    #dump json        
-    return json.dumps(graph)
 
 def make_data():
     from collections import defaultdict
@@ -711,7 +952,7 @@ def build_model():
     doc_ids = X.nonzero()[0]
     word_ids = X.nonzero()[1]
     for i in range(len(doc_ids)):
-        doc_dict[years[i]][doc_ids[i]].append((word_ids[i], X[doc_ids[i], word_ids[i]]))    
+        doc_dict[years[doc_ids[i]]][doc_ids[i]].append((word_ids[i], 1))#X[doc_ids[i], word_ids[i]]))    
     id2word = {}
     for w in vectorizer.vocabulary_:
         id2word[vectorizer.vocabulary_[w]] = w
@@ -876,7 +1117,13 @@ def parse_cluster():
     f_out.close()
 
 def cluster_topics():
-    for i in range(1981, 2010):
-        pass
+    import gensim
+    from sklearn.cluster import Ward, KMeans
+    models = {}
+    for y in range(1981, 2010):
+        models[y] = gensim.models.ldamodel.LdaModel.load("lda-model-streamming-30-"+str(y))
+    for y in models:
+        models[y].show_topics(30)
+    kmeans = KMeans(init='k-means++', n_clusters=30).fit(X)
 
 
