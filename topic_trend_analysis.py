@@ -1,5 +1,6 @@
 from dcclient.dcclient import DataCenterClient
 from teclient.teclient import TermExtractorClient
+from utils.algorithms import jaccard_similarity
 from collections import defaultdict
 from bs4 import UnicodeDammit
 import numpy as np
@@ -10,6 +11,7 @@ import networkx as nx
 from sklearn.cluster import Ward, KMeans, MiniBatchKMeans
 data_center = DataCenterClient("tcp://10.1.1.211:32011")
 term_extractor = TermExtractorClient()
+
 def extractPublication(p):
     #extract key terms from abstract and title
     text = p.title.lower() + " . " + p.abs.lower()
