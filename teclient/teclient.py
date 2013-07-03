@@ -4,8 +4,8 @@ import socket
 def request(text):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
     sock.connect(("10.1.1.110",6060))
-
-    sock.send(text.encode("utf-8")+"<end>")
+    num = 5  
+    sock.send("<cmd>\n" + "num=" + str(num) + "\n" + "type=PhraseOnly\n" + "</cmd>" +text.encode("utf-8")+"<end>")
     reply = sock.recv(99999)
     response = parse_reply(reply)
     return response

@@ -27,7 +27,7 @@ var svg = d3.select("#chart").append("svg")
 
 var sankey = d3.sankey()
     .nodeWidth(0)
-    .nodePadding(5)
+    .nodePadding(10)
     .size([width, height]);
 
 var path = sankey.link();
@@ -57,8 +57,8 @@ function resize_chart(){
 
 resize_chart();
 window.onresize = resize_chart();
-render_topic("deep learning", 0.0001);
-document.getElementById("topic-trend-search-text").value ="deep learning"
+render_topic("visualization", 0.0001);
+document.getElementById("topic-trend-search-text").value ="visualization"
 document.getElementById("topic-trend-search-threshold").value =0.0001
 
 function render_topic(q, threshold){
@@ -69,7 +69,7 @@ function render_topic(q, threshold){
     .attr("id","trend")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-  d3.json("/academic/terms?q="+q+"&threshold="+threshold, function(energy) {
+  d3.json("/academic/render?q="+q+"&threshold="+threshold, function(energy) {
 
   svg.append("linearGradient")
     .attr("id", "temperature-gradient")
@@ -149,9 +149,9 @@ function render_topic(q, threshold){
         .attr("x2", d.target.x).attr("y2", 0)
         .selectAll("stop")
         .data([
-          {offset: "0%", color: color(d.source.cluster)},
+          {offset: "0%", color: color(d.source.name[0])},
           // {offset: "50%", color: "gray"},
-          {offset: "100%", color: color(d.target.cluster)}
+          {offset: "100%", color: color(d.target.name[0])}
         ])
       .enter().append("stop")
         .attr("offset", function(d) { return d.offset; })
@@ -177,7 +177,7 @@ function render_topic(q, threshold){
       .attr("height", function(d) { return d.dy; })
       .attr("width", sankey.nodeWidth())
       .style("fill", function(d) {
-       return d.color = color(d.cluster);
+       return d.color = color(d.name[0]);
      })
       .style("stroke", function(d) { return d.color;})//d3.rgb(d.color).darker(2); })
     .append("title")
@@ -189,7 +189,7 @@ function render_topic(q, threshold){
       .attr("dy", ".35em")
       .attr("text-anchor", "end")
       .attr("transform", null)
-      .text(function(d) { return d.name })
+      .text(function(d) { return d.name.split("-")[0]; })
     .filter(function(d) { return d.x < width / 2; })
       .attr("x", 6 + sankey.nodeWidth())
       .attr("text-anchor", "start");

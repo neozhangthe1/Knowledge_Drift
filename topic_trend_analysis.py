@@ -10,12 +10,32 @@ import networkx as nx
 from sklearn.cluster import Ward, KMeans, MiniBatchKMeans
 data_center = DataCenterClient("tcp://10.1.1.211:32011")
 term_extractor = TermExtractorClient()
+def extractPublication(p):
+    #extract key terms from abstract and title
+    text = p.title.lower() + " . " + p.abs.lower()
+    #terms = term_extractor.extractTerms(text)
+    #extract citation network
+    children = []
+    children_ids = []
+    parents = []
+    parents_ids = []
+    authors = []
+    authors_ids = []
+    for x in p.cited_by_pubs:
+        children.append(str(x))
+        children_ids.append(x)
+    for x in p.cite_pubs:
+        parents.append(str(x))
+        parents_ids.append(x)
+    for x in p.authors:
+        authors.append(x)
+    return children_ids, parents_ids, authors, authors_ids
 
 class TopicTrend(object):
     def __init__(self):
         print "INIT TOPIC TREND"
-        #self.parse_topic_model()
-        #self.parse_topic_graph()
+        self.parse_topic_model()
+        self.parse_topic_graph()
 
     def query_topic_trends(self, query, threshold=0.0001):
         print "MATCHING QUERY TO TOPICS", query, threshold
@@ -113,10 +133,12 @@ class TopicTrend(object):
                     feature_vectors.append(feature)
                     feature_term.append(k)
                     index += 1
+                    if index == 100:
+                        break
             labels = None
             if len(feature_vectors) > 10:
                 print "KMeans... ", y
-                kmeans = KMeans(init='k-means++', n_clusters=10).fit(feature_vectors)
+                kmeans = KMeans(init='k-means++', n_clusters=5).fit(feature_vectors)
                 print "KMeans finished"
                 labels = kmeans.labels_
             else:
@@ -131,7 +153,7 @@ class TopicTrend(object):
                 yindex += 1 
             year_cluster_label[y] = clusters
         print "Global KMeans... "
-        kmeans = KMeans(init='k-means++', n_clusters=10).fit(cluster_feature_vectors)
+        kmeans = KMeans(init='k-means++', n_clusters=5).fit(cluster_feature_vectors)
         print "Global KMeans finished"
         graph = {"nodes":[], "links":[]}
         index = 0
@@ -170,9 +192,9 @@ class TopicTrend(object):
                         year_global_clusters_sim_target[str(y)+"-"+str(c1)][str(y-1)+"-"+str(c2)] = sim
                         year_global_clusters_sim_source[str(y-1)+"-"+str(c2)][str(y)+"-"+str(c1)] = sim
         for key1 in year_global_clusters_sim_target:
-            m1 = max(year_global_clusters_sim_target[key1].values())
+            m1 = sum(year_global_clusters_sim_target[key1].values())
             for key2 in year_global_clusters_sim_target[key1]:
-                m2 = max(year_global_clusters_sim_source[key2].values())
+                m2 = sum(year_global_clusters_sim_source[key2].values())
                 graph["links"].append({"source":int(year_global_clusters_index[key1]),
                             "target":int(year_global_clusters_index[key2]),
                             "w1":year_global_clusters_sim_target[key1][key2]/float(m1),
@@ -205,6 +227,83 @@ class TopicTrend(object):
         #                                    "w2":1})
         #        pre = index
         #        index += 1
+        return graph
+
+    def query_terms_1(self, q):
+        x = data_center.searchAuthors(q)
+        pubs = []
+        author_name_dict = {}
+        year_publication = defaultdict(list)
+        key_terms = defaultdict(int)
+        year_terms = defaultdict(lambda: defaultdict(int))
+        term_person = defaultdict(set)
+        person_index = {}
+        corpus = defaultdict(dict)
+        #query authors and publications
+        index = 0
+        for a in x.authors:
+            print "querying publications for", a.names
+            result = data_center.getPublicationsByAuthorId([a.naid])
+            print "found ", len(result.publications), "publications"
+            person_index[a.naid] = index
+            index += 1
+            text = ""
+            for p in result.publications:
+                if p.year > 1990:
+                    children_ids, parents_ids, authors, author_ids = extractPublication(p)
+                    text += (p.title.lower() + " . " + p.abs.lower() +" . ")
+                    corpus[p.year][p.id] = text
+                    for i in range(len(author_ids)):
+                        author_name_dict[author_ids[i]] = authors[i]
+                    year_publication[p.year].append(p.id)
+            terms = term_extractor.extractTerms(text)
+            for t in terms:
+                term_person[t].add(a.naid)
+        for y in corpus:
+            for text in corpus[y].values():
+                for t in term_person:
+                    if t in text:
+                        key_terms[t] += 1
+                        year_terms[y][t] += 1
+        #build feature vectors
+        feature_vectors = []
+        feature_index = {}
+        sorted_terms = sorted(key_terms.items(), key = lambda x: x[1], reverse=True)
+        index = 0
+        for k in sorted_terms:
+            feature_index[k[0]] = index
+            feature = [0.0 for i in range(len(x.authors))]
+            for a in term_person[k[0]]:
+                feature[person_index[a]] = 1
+            feature_vectors.append(feature)
+            index += 1
+        kmeans = KMeans(init='k-means++', n_clusters=10).fit(feature_vectors)
+        clusters = defaultdict(list)
+        for i in range(len(kmeans.labels_)):
+            clusters[kmeans.labels_[i]].append(sorted_terms[i][0])
+        cluster_year_weight = defaultdict(lambda :defaultdict(float))
+        for y in year_terms:
+            for c in clusters:
+                # cluster_year_weight[y][c] = cluster_year_weight[y-1][c]
+                for k in clusters[c]:
+                    cluster_year_weight[y][c] += year_terms[y][k]
+            z = max(cluster_year_weight[y].values())
+            if z == 0:
+                z = 1
+            for c in clusters:
+                cluster_year_weight[y][c] /= z
+        graph = []
+        for c in clusters:
+            layer = {"terms":[],"nodes":[]}
+            for y in cluster_year_weight:
+                layer["nodes"].append({"year":y, "weight":cluster_year_weight[y][c]})
+            for t in clusters[c]:
+                layer["terms"].append(t)
+            graph.append(layer)
+        import json
+        dump = open("trend.json","w")
+        json.dump(graph, dump )
+        dump.close()
         return graph
 
     def render_topic_graph_1(self, nodes):
@@ -658,26 +757,6 @@ class TopicTrend(object):
                                           "w2":target_weight * link_weight / target_sigma}) #topic weight * link weight / sigma
         return graph
 
-def extractPublication(p):
-    #extract key terms from abstract and title
-    text = p.title.lower() + " . " + p.abs.lower()
-    #terms = term_extractor.extractTerms(text)
-    #extract citation network
-    children = []
-    children_ids = []
-    parents = []
-    parents_ids = []
-    authors = []
-    authors_ids = []
-    for x in p.cited_by_pubs:
-        children.append(str(x))
-        children_ids.append(x)
-    for x in p.cite_pubs:
-        parents.append(str(x))
-        parents_ids.append(x)
-    for x in p.authors:
-        authors.append(x)
-    return children_ids, parents_ids, authors, authors_ids
 
 def query_community(self, q):
     import community

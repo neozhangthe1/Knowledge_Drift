@@ -221,14 +221,14 @@ d3.sankey = function() {
       nodesByBreadth.forEach(function(nodes) {
         nodes.forEach(function(node, i) {
           node.y = i;
-          node.dy = node.value * ky;
+          node.dy = node.value * d3.sum(node.sourceLinks, weight1) * ky;
         });
       });
 
       links.forEach(function(link) {
         // link.dy = link.value * ky;
-        link.dy1 = link.w1 * ky;
-        link.dy2 = link.w2 * ky;
+        link.dy1 = link.w1 * ky * link.source.value;
+        link.dy2 = link.w2 * ky * link.target.value;
       });
     }
 
@@ -332,8 +332,8 @@ d3.sankey = function() {
     return node.y + node.dy / 2;
   }
 
-  function value(link) {
-    return link.value;
+  function value(node) {
+    return node.value * d3.sum(node.sourceLinks, weight1);
   }
 
   function weight1(link) {
