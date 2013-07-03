@@ -25,6 +25,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="bottle.py" />
+    <Compile Include="community.py" />
+    <Compile Include="community_1.py" />
     <Compile Include="sample_data.py" />
     <Compile Include="server.py" />
     <Compile Include="dcclient\dcclient.py" />

@@ -1,0 +1,31 @@
+svg {
+  font: 10px sans-serif;
+}
+
+#chart {
+  height: 350px;
+  padding-top: 20px;
+  clear: both;
+  overflow-x: scroll; 
+}
+
+.node rect {
+  cursor: move;
+  fill-opacity: .9;
+  shape-rendering: crispEdges;
+}
+
+.node text {
+  pointer-events: none;
+  text-shadow: 0 1px 0 #fff;
+}
+
+.link {
+  /*fill: url(#temperature-gradient);*/
+  /*stroke: #000;*/
+  /*stroke-opacity: .2;*/
+}
+
+.link:hover {
+  stroke-opacity: .5;
+}

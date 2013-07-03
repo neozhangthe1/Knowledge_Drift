@@ -1,0 +1,1308 @@
+﻿<!DOCTYPE html>
+<!-- saved from url=(0069)http://vis.pku.edu.cn/weibova/weiboevents/frame.html?event=weibo-37.2 -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>SocialNetwork Analysis Engine</title>
+
+  <script type="text/javascript" src="./static/jquery.js"></script>
+  <script type="text/javascript" src="./static/jquery-cookie.js"></script>
+  <script type="text/javascript" src="./static/timeline.min.js"></script>
+  <script type="text/javascript" src="./static/sketchpad.min.js"></script>
+  <script type="text/javascript" src="./static/jsfr.min.js"></script>
+  <script type="text/javascript" src="./static/data.json"></script>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="./static/frame.css">
+  <style>
+    .node {
+      stroke: #fff;
+      stroke-width: 1.5px;
+    }
+
+    .link {
+      fill: none;
+      stroke: #bbb;
+    }
+   </style>
+</head>
+<body>
+    <script>
+
+        var width = 960,
+            height = 500;
+
+        var color = d3.scale.category20();
+
+        var force = d3.layout.force()
+            .linkDistance(10)
+            .linkStrength(2)
+            .size([width, height]);
+
+        var svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        d3.json("/d/4062045/miserables.json", function (error, graph) {
+            var nodes = graph.nodes.slice(),
+                links = [],
+                bilinks = [];
+
+            graph.links.forEach(function (link) {
+                var s = nodes[link.source],
+                    t = nodes[link.target],
+                    i = {}; // intermediate node
+                nodes.push(i);
+                links.push({ source: s, target: i }, { source: i, target: t });
+                bilinks.push([s, i, t]);
+            });
+
+            force
+                .nodes(nodes)
+                .links(links)
+                .start();
+
+            var link = svg.selectAll(".link")
+                .data(bilinks)
+              .enter().append("path")
+                .attr("class", "link");
+
+            var node = svg.selectAll(".node")
+                .data(graph.nodes)
+              .enter().append("circle")
+                .attr("class", "node")
+                .attr("r", 5)
+                .style("fill", function (d) { return color(d.group); })
+                .call(force.drag);
+
+            node.append("title")
+                .text(function (d) { return d.name; });
+
+            force.on("tick", function () {
+                link.attr("d", function (d) {
+                    return "M" + d[0].x + "," + d[0].y
+                        + "S" + d[1].x + "," + d[1].y
+                        + " " + d[2].x + "," + d[2].y;
+                });
+                node.attr("transform", function (d) {
+                    return "translate(" + d.x + "," + d.y + ")";
+                });
+            });
+        });
+
+</script>
+<!--   <div id="toolbar">
+    <span id="status">
+      <span id="login-status">張宇弢</span>
+      <span id="data-status">totally 6581 statuses.</span>
+      <span id="load-status" class="load-status">ready.</span>
+    </span>
+    <span class="button" onclick="toggle_language();">En</span>
+   <span class="button" id="btn-toggle-text" onclick="toggle_text();">text</span>
+ 
+  <div class="button-group">
+    <span class="button btn-layout-method ref-sail-span active" id="btn-sw-zoom">帆</span>
+    <span class="button btn-layout-method ref-tree">树</span>
+    <span class="button btn-layout-method ref-circular" id="btn-sw-zoom">环</span>
+  </div>
+  <div class="button-group" id="btn-group-action">
+    <span class="button btn-action ref-zoom" id="btn-sw-zoom">放大</span>
+    <span class="button btn-action ref-pan active">移动</span>
+  </div>
+  <span class="button" id="btn-zoom-in">＋</span>
+  <span class="button" id="btn-zoom-out">－</span>
+  <span class="button" id="btn-restore">前一视图</span>
+  <span class="button" id="btn-reset">复原</span>
+  <span class="button" id="btn-highlight-all">多个</span>
+  <span class="button" id="btn-deselect">取消选择</span>
+  <div class="button-group">
+    <span class="button-t">横轴:</span>
+    <span class="button btn-xaxis active ref-linear" id="btn-sw-xaxis">线性</span>
+    <span class="button btn-xaxis ref-nonlinear">伸缩</span>
+  </div>
+
+  <span class="button active" id="btn-word-cloud">关键词</span>
+
+  <span class="button" id="btn-show-help" onclick="begin_help();">帮助</span>
+
+  <span class="button i18n i18n-suggestions" id="btn-suggestions">提建议</span>
+
+  <span class="button" id="btn-cstask">小任务</span>
+</div> -->
+
+<div id="graph">
+  <div id="graph-inner" style="left: 0px; top: 0px;">
+    <canvas id="canvas-graph" width="1126" height="513"></canvas>
+    <canvas id="canvas-graph-nodes" width="1126" height="513"></canvas>
+    <canvas id="canvas-graph-previous-statistics" width="1126" height="513" style="display: none;"></canvas>
+    <canvas id="canvas-graph-overlay" width="1126" height="513" style="display: none;"></canvas>
+    <canvas id="canvas-graph-over-lines" width="1126" height="513"></canvas>
+    <canvas id="canvas-graph-over" width="1126" height="513"></canvas>
+    <div id="graph-texts" class="hide"></div>
+  </div>
+  <div id="graph-sketchpad" style="width: 1126px; height: 513px;">
+    <canvas width="1126" height="513"></canvas>
+    <div class="toolbox">
+      <span class="button btn-arrow">箭头</span>
+      <span class="button btn-text">文本</span>
+      <input type="text" class="input-text">
+      <span class="btn-color btn-color-0-0-0" style="color: rgb(0, 0, 0); background-color: rgb(0, 0, 0);"></span>
+      <span class="btn-color btn-color-31-119-180" style="color: rgb(31, 119, 180); background-color: rgb(31, 119, 180);"></span>
+      <span class="btn-color btn-color-255-127-14" style="color: rgb(255, 127, 14); background-color: rgb(255, 127, 14);"></span>
+      <span class="btn-color btn-color-44-160-44" style="color: rgb(44, 160, 44); background-color: rgb(44, 160, 44);"></span>
+      <span class="button btn-remove">删除</span>
+      <span class="button btn-close">关闭</span>
+    </div>
+  </div>
+</div>
+
+<div id="timeline" class="pkuvis-timeline" style="height: 120px; cursor: crosshair;">
+<!--   <span class="set-height" style="display: none;">120</span>
+  <span class="set-colorscheme" style="display: none;">black</span>
+  <span class="-enable-yticks" style="display: none;"></span> -->
+  <!--<span class="disable-track-range"></span>
+-->
+
+</div>
+
+<!-- <div id="right-box">
+  <div id="defusion-graph">
+    <div id="defusion-graph-inner" style="left: 0px; top: 0px;">
+      <canvas id="defusion-canvas-graph" width="1126" height="513"></canvas>
+      <canvas id="defusion-canvas-graph-nodes" width="1126" height="513"></canvas>
+      <canvas id="defusion-canvas-graph-previous-statistics" width="1126" height="513" style="display: none;"></canvas>
+      <canvas id="defusion-canvas-graph-overlay" width="1126" height="513" style="display: none;"></canvas>
+      <canvas id="defusion-canvas-graph-over-lines" width="1126" height="513"></canvas>
+      <canvas id="defusion-canvas-graph-over" width="1126" height="513"></canvas>
+      <div id="defusion-graph-texts" class="hide"></div>
+    </div>
+  </div>
+
+  <div id="pan-graph">
+    <div id="pan-graph-inner" style="left: 0px; top: 0px;">
+      <canvas id="pan-canvas-graph" width="1126" height="513"></canvas>
+      <canvas id="pan-canvas-graph-nodes" width="1126" height="513"></canvas>
+      <canvas id="pan-canvas-graph-previous-statistics" width="1126" height="513" style="display: none;"></canvas>
+      <canvas id="pan-canvas-graph-overlay" width="1126" height="513" style="display: none;"></canvas>
+      <canvas id="pan-canvas-graph-over-lines" width="1126" height="513"></canvas>
+      <canvas id="pan-canvas-graph-over" width="1126" height="513"></canvas>
+      <div id="pan-graph-texts" class="hide"></div>
+    </div>
+  </div>
+</div> -->
+<!--<div id="right-box">
+<div id="right-box-inner">
+<h2 class="i18n i18n-node-size">节点大小</h2>
+<div class="button-group">
+  <span id="btn-node-size-retweets" class="button btn-node-size active ref-retweets i18n i18n-retweets">转发数</span>
+  <span class="button btn-node-size ref-followers i18n i18n-followers">粉丝数</span>
+  <span class="button btn-node-size ref-posts i18n i18n-posts">posts</span>
+  <span class="button btn-node-size ref-uniform i18n i18n-uniform">统一</span>
+</div>
+<br>
+<div class="slider-bar">
+  <div class="control-left-text i18n i18n-expand-threshold">展开阈值</div>
+  <div id="ctrl-expand-threshold" class="pkuvis-slider pkuvis-slider-center" style="width: 120px; position: relative; height: 16px; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; display: inline-block; vertical-align: top; margin: 4px; background-color: rgb(204, 204, 204);">
+    <div style="width: 16px; height: 16px; position: absolute; top: 0px; left: 9.454545454545455px; background-color: rgb(31, 119, 180); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; cursor: pointer;"></div>
+  </div>
+  <span id="ctrl-expand-threshold-value">50</span>
+</div>
+<div class="slider-bar">
+  <div class="control-left-text i18n i18n-node-size-scale">大小控制</div>
+  <div id="ctrl-node-size" class="pkuvis-slider pkuvis-slider-center" style="width: 120px; position: relative; height: 16px; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; display: inline-block; vertical-align: top; margin: 4px; background-color: rgb(204, 204, 204);">
+    <div style="width: 16px; height: 16px; position: absolute; top: 0px; left: 52px; background-color: rgb(31, 119, 180); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; cursor: pointer;"></div>
+  </div>
+  <span id="ctrl-node-size-value">1.00x</span>
+</div>
+<h2 class="i18n i18n-filters">微博过滤</h2>
+<div class="slider-bar">
+  <div class="control-left-text i18n i18n-followers">粉丝数</div>
+  <div id="ctrl-filter-followers" class="pkuvis-slider" style="width: 100px; position: relative; height: 16px; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; display: inline-block; vertical-align: top; margin: 4px; background-color: rgb(204, 204, 204);">
+    <div style="width: 16px; height: 16px; position: absolute; top: 0px; left: 0px; background-color: rgb(31, 119, 180); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; cursor: pointer;"></div>
+  </div>
+  <span id="ctrl-filter-followers-value"></span>
+</div>
+<div class="slider-bar">
+  <div class="control-left-text i18n i18n-retweets">转发数</div>
+  <div id="ctrl-filter-reposts" class="pkuvis-slider" style="width: 100px; position: relative; height: 16px; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; display: inline-block; vertical-align: top; margin: 4px; background-color: rgb(204, 204, 204);">
+    <div style="width: 16px; height: 16px; position: absolute; top: 0px; left: 0px; background-color: rgb(31, 119, 180); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; cursor: pointer;"></div>
+  </div>
+  <span id="ctrl-filter-reposts-value"></span>
+</div>
+<div class="slider-bar" id="filter-bottom">
+  <div class="control-left-text i18n i18n-text-length">字数</div>
+  <div id="ctrl-filter-text-length" class="pkuvis-slider" style="width: 100px; position: relative; height: 16px; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; display: inline-block; vertical-align: top; margin: 4px; background-color: rgb(204, 204, 204);">
+    <div style="width: 16px; height: 16px; position: absolute; top: 0px; left: 0px; background-color: rgb(31, 119, 180); border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; cursor: pointer;"></div>
+  </div>
+  <span id="ctrl-filter-text-length-value"></span>
+</div>
+
+<h2 class="i18n i18n-meta">分享/统计</h2>
+<div>
+  <span class="button i18n i18n-share" id="btn-submit">分享到我的微博</span>
+  <span class="button i18n i18n-statistics" id="btn-show-stat">足迹</span>
+</div>
+
+<div id="rightlist-listpos"></div>
+<div id="rightlist-users">
+  <h2 class="i18n i18n-userlist">用户列表</h2>
+  <div id="user-lists" style="height: 322px;">
+    <div id="user-myfriends">
+      <div class="header">我的好友:</div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1266321801&#39;)" onclick="set_highlight_user(&#39;1266321801&#39;)">
+        <span class="name">姚晨</span>
+        <span class="info">
+          <span class="info-followers">18409721</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">4093</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1796469287&#39;)" onclick="set_highlight_user(&#39;1796469287&#39;)">
+        <span class="name">微盘</span>
+        <span class="info">
+          <span class="info-followers">701099</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">93</span>
+        </span>
+      </div>
+    </div>
+    <div id="user-list">
+      <div class="header">
+        用户列表:
+        <span class="info">
+          <span class="info-followers sort-followers" onclick="do_change_userlist_sort(&#39;followers&#39;, this);">粉丝</span>
+          <span class="info-posts sort-posts" onclick="do_change_userlist_sort(&#39;posts&#39;, this);">微博数</span>
+          <span class="info-reposts sort-retweets active" onclick="do_change_userlist_sort(&#39;retweets&#39;, this);">被转数</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1266321801&#39;)" onclick="set_highlight_user(&#39;1266321801&#39;)">
+        <span class="name">姚晨</span>
+        <span class="info">
+          <span class="info-followers">18409721</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">4093</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1777988984&#39;)" onclick="set_highlight_user(&#39;1777988984&#39;)">
+        <span class="name">南小七7</span>
+        <span class="info">
+          <span class="info-followers">1133</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">132</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1796469287&#39;)" onclick="set_highlight_user(&#39;1796469287&#39;)">
+        <span class="name">微盘</span>
+        <span class="info">
+          <span class="info-followers">701099</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">93</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1870196127&#39;)" onclick="set_highlight_user(&#39;1870196127&#39;)">
+        <span class="name">小佺</span>
+        <span class="info">
+          <span class="info-followers">6109</span>
+          <span class="info-posts">26</span>
+          <span class="info-reposts">40</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1878722603&#39;)" onclick="set_highlight_user(&#39;1878722603&#39;)">
+        <span class="name">中国传媒大学校友会</span>
+        <span class="info">
+          <span class="info-followers">29359</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">38</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1842810834&#39;)" onclick="set_highlight_user(&#39;1842810834&#39;)">
+        <span class="name">范范的媽媽</span>
+        <span class="info">
+          <span class="info-followers">234864</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">17</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2471977162&#39;)" onclick="set_highlight_user(&#39;2471977162&#39;)">
+        <span class="name">木目蕴芝爱玩</span>
+        <span class="info">
+          <span class="info-followers">70</span>
+          <span class="info-posts">15</span>
+          <span class="info-reposts">16</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1407494625&#39;)" onclick="set_highlight_user(&#39;1407494625&#39;)">
+        <span class="name">传媒张国涛</span>
+        <span class="info">
+          <span class="info-followers">9975</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">14</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1576746794&#39;)" onclick="set_highlight_user(&#39;1576746794&#39;)">
+        <span class="name">嫣然飘散</span>
+        <span class="info">
+          <span class="info-followers">833</span>
+          <span class="info-posts">14</span>
+          <span class="info-reposts">14</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1878683321&#39;)" onclick="set_highlight_user(&#39;1878683321&#39;)">
+        <span class="name">中国传媒大学微记忆</span>
+        <span class="info">
+          <span class="info-followers">20543</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">13</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1803479591&#39;)" onclick="set_highlight_user(&#39;1803479591&#39;)">
+        <span class="name">Qiqi_lidia</span>
+        <span class="info">
+          <span class="info-followers">274</span>
+          <span class="info-posts">10</span>
+          <span class="info-reposts">12</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1076901124&#39;)" onclick="set_highlight_user(&#39;1076901124&#39;)">
+        <span class="name">Miss_Amy_</span>
+        <span class="info">
+          <span class="info-followers">4536</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">11</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1144818120&#39;)" onclick="set_highlight_user(&#39;1144818120&#39;)">
+        <span class="name">Lee是视觉动物</span>
+        <span class="info">
+          <span class="info-followers">1338</span>
+          <span class="info-posts">8</span>
+          <span class="info-reposts">11</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1567391871&#39;)" onclick="set_highlight_user(&#39;1567391871&#39;)">
+        <span class="name">FlourishX阿蓉</span>
+        <span class="info">
+          <span class="info-followers">339</span>
+          <span class="info-posts">12</span>
+          <span class="info-reposts">11</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1984772505&#39;)" onclick="set_highlight_user(&#39;1984772505&#39;)">
+        <span class="name">菲菲美有飞</span>
+        <span class="info">
+          <span class="info-followers">55</span>
+          <span class="info-posts">13</span>
+          <span class="info-reposts">11</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1774904132&#39;)" onclick="set_highlight_user(&#39;1774904132&#39;)">
+        <span class="name">骆小妍</span>
+        <span class="info">
+          <span class="info-followers">814</span>
+          <span class="info-posts">10</span>
+          <span class="info-reposts">10</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1671539110&#39;)" onclick="set_highlight_user(&#39;1671539110&#39;)">
+        <span class="name">陈猪头要真心爱生活</span>
+        <span class="info">
+          <span class="info-followers">644</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">10</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1739591402&#39;)" onclick="set_highlight_user(&#39;1739591402&#39;)">
+        <span class="name">Joyce纸人儿</span>
+        <span class="info">
+          <span class="info-followers">636</span>
+          <span class="info-posts">11</span>
+          <span class="info-reposts">10</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2041946833&#39;)" onclick="set_highlight_user(&#39;2041946833&#39;)">
+        <span class="name">26-律</span>
+        <span class="info">
+          <span class="info-followers">405</span>
+          <span class="info-posts">10</span>
+          <span class="info-reposts">10</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1991252395&#39;)" onclick="set_highlight_user(&#39;1991252395&#39;)">
+        <span class="name">传媒大学在读研究生</span>
+        <span class="info">
+          <span class="info-followers">3029</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">9</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1673466231&#39;)" onclick="set_highlight_user(&#39;1673466231&#39;)">
+        <span class="name">孙丫溪</span>
+        <span class="info">
+          <span class="info-followers">1931</span>
+          <span class="info-posts">2</span>
+          <span class="info-reposts">9</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1872920831&#39;)" onclick="set_highlight_user(&#39;1872920831&#39;)">
+        <span class="name">惟一的蜘蛛</span>
+        <span class="info">
+          <span class="info-followers">980</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">9</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1952887965&#39;)" onclick="set_highlight_user(&#39;1952887965&#39;)">
+        <span class="name">大欢要蜕变</span>
+        <span class="info">
+          <span class="info-followers">153</span>
+          <span class="info-posts">9</span>
+          <span class="info-reposts">9</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2422376781&#39;)" onclick="set_highlight_user(&#39;2422376781&#39;)">
+        <span class="name">瑞衣其-riCh</span>
+        <span class="info">
+          <span class="info-followers">148</span>
+          <span class="info-posts">10</span>
+          <span class="info-reposts">9</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2196396944&#39;)" onclick="set_highlight_user(&#39;2196396944&#39;)">
+        <span class="name">芙月月</span>
+        <span class="info">
+          <span class="info-followers">138</span>
+          <span class="info-posts">10</span>
+          <span class="info-reposts">9</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2309720990&#39;)" onclick="set_highlight_user(&#39;2309720990&#39;)">
+        <span class="name">唉木新疆</span>
+        <span class="info">
+          <span class="info-followers">118</span>
+          <span class="info-posts">9</span>
+          <span class="info-reposts">9</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2307825985&#39;)" onclick="set_highlight_user(&#39;2307825985&#39;)">
+        <span class="name">小玥个个</span>
+        <span class="info">
+          <span class="info-followers">37</span>
+          <span class="info-posts">11</span>
+          <span class="info-reposts">9</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1609478063&#39;)" onclick="set_highlight_user(&#39;1609478063&#39;)">
+        <span class="name">Arieszhu</span>
+        <span class="info">
+          <span class="info-followers">512</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">8</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1582235982&#39;)" onclick="set_highlight_user(&#39;1582235982&#39;)">
+        <span class="name">鐘小寶Eline</span>
+        <span class="info">
+          <span class="info-followers">413</span>
+          <span class="info-posts">6</span>
+          <span class="info-reposts">8</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1709244021&#39;)" onclick="set_highlight_user(&#39;1709244021&#39;)">
+        <span class="name">graceg0916</span>
+        <span class="info">
+          <span class="info-followers">310</span>
+          <span class="info-posts">6</span>
+          <span class="info-reposts">8</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1762302841&#39;)" onclick="set_highlight_user(&#39;1762302841&#39;)">
+        <span class="name">羊杂汤小六</span>
+        <span class="info">
+          <span class="info-followers">306</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">8</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1948731874&#39;)" onclick="set_highlight_user(&#39;1948731874&#39;)">
+        <span class="name">Jindy-JJ</span>
+        <span class="info">
+          <span class="info-followers">256</span>
+          <span class="info-posts">8</span>
+          <span class="info-reposts">8</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1639203113&#39;)" onclick="set_highlight_user(&#39;1639203113&#39;)">
+        <span class="name">RubbyYing</span>
+        <span class="info">
+          <span class="info-followers">255</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">8</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2433775162&#39;)" onclick="set_highlight_user(&#39;2433775162&#39;)">
+        <span class="name">大班yannis</span>
+        <span class="info">
+          <span class="info-followers">204</span>
+          <span class="info-posts">9</span>
+          <span class="info-reposts">8</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1763785471&#39;)" onclick="set_highlight_user(&#39;1763785471&#39;)">
+        <span class="name">LT21</span>
+        <span class="info">
+          <span class="info-followers">135</span>
+          <span class="info-posts">6</span>
+          <span class="info-reposts">8</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1782950652&#39;)" onclick="set_highlight_user(&#39;1782950652&#39;)">
+        <span class="name">SaMsOnnnn</span>
+        <span class="info">
+          <span class="info-followers">10942</span>
+          <span class="info-posts">6</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1179700700&#39;)" onclick="set_highlight_user(&#39;1179700700&#39;)">
+        <span class="name">zyuer</span>
+        <span class="info">
+          <span class="info-followers">10458</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1349398624&#39;)" onclick="set_highlight_user(&#39;1349398624&#39;)">
+        <span class="name">邵巍</span>
+        <span class="info">
+          <span class="info-followers">6853</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1770471612&#39;)" onclick="set_highlight_user(&#39;1770471612&#39;)">
+        <span class="name">广院山药蛋</span>
+        <span class="info">
+          <span class="info-followers">5257</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1877221602&#39;)" onclick="set_highlight_user(&#39;1877221602&#39;)">
+        <span class="name">第四十七号信箱</span>
+        <span class="info">
+          <span class="info-followers">5021</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1262605813&#39;)" onclick="set_highlight_user(&#39;1262605813&#39;)">
+        <span class="name">广院老刘</span>
+        <span class="info">
+          <span class="info-followers">1356</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1913974725&#39;)" onclick="set_highlight_user(&#39;1913974725&#39;)">
+        <span class="name">bobo哥奋斗仔</span>
+        <span class="info">
+          <span class="info-followers">837</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1704288664&#39;)" onclick="set_highlight_user(&#39;1704288664&#39;)">
+        <span class="name">fatfat秦</span>
+        <span class="info">
+          <span class="info-followers">750</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1757092041&#39;)" onclick="set_highlight_user(&#39;1757092041&#39;)">
+        <span class="name">阿说阿说阿说说说说</span>
+        <span class="info">
+          <span class="info-followers">581</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1793243615&#39;)" onclick="set_highlight_user(&#39;1793243615&#39;)">
+        <span class="name">随随宝</span>
+        <span class="info">
+          <span class="info-followers">432</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1928663241&#39;)" onclick="set_highlight_user(&#39;1928663241&#39;)">
+        <span class="name">Double罗闻</span>
+        <span class="info">
+          <span class="info-followers">303</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1698229904&#39;)" onclick="set_highlight_user(&#39;1698229904&#39;)">
+        <span class="name">吴妞妞Willa</span>
+        <span class="info">
+          <span class="info-followers">287</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2391319394&#39;)" onclick="set_highlight_user(&#39;2391319394&#39;)">
+        <span class="name">涂传彪_Sky-Tu</span>
+        <span class="info">
+          <span class="info-followers">272</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2209355412&#39;)" onclick="set_highlight_user(&#39;2209355412&#39;)">
+        <span class="name">轻问轻烟</span>
+        <span class="info">
+          <span class="info-followers">64</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">7</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2253748040&#39;)" onclick="set_highlight_user(&#39;2253748040&#39;)">
+        <span class="name">广院核桃林</span>
+        <span class="info">
+          <span class="info-followers">5442</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2201547165&#39;)" onclick="set_highlight_user(&#39;2201547165&#39;)">
+        <span class="name">定福庄庄主</span>
+        <span class="info">
+          <span class="info-followers">2032</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1794801963&#39;)" onclick="set_highlight_user(&#39;1794801963&#39;)">
+        <span class="name">98里的浅吟低唱</span>
+        <span class="info">
+          <span class="info-followers">1291</span>
+          <span class="info-posts">2</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1752974735&#39;)" onclick="set_highlight_user(&#39;1752974735&#39;)">
+        <span class="name">晓景liu</span>
+        <span class="info">
+          <span class="info-followers">1168</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1765763485&#39;)" onclick="set_highlight_user(&#39;1765763485&#39;)">
+        <span class="name">浮躁1969</span>
+        <span class="info">
+          <span class="info-followers">1143</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1715591783&#39;)" onclick="set_highlight_user(&#39;1715591783&#39;)">
+        <span class="name">Oh米小宝</span>
+        <span class="info">
+          <span class="info-followers">882</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1242843645&#39;)" onclick="set_highlight_user(&#39;1242843645&#39;)">
+        <span class="name">你遊戲了我的聲情並茂</span>
+        <span class="info">
+          <span class="info-followers">805</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1932156721&#39;)" onclick="set_highlight_user(&#39;1932156721&#39;)">
+        <span class="name">狗狗北京</span>
+        <span class="info">
+          <span class="info-followers">616</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1760438245&#39;)" onclick="set_highlight_user(&#39;1760438245&#39;)">
+        <span class="name">keithLIAOYUAN</span>
+        <span class="info">
+          <span class="info-followers">598</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1160802071&#39;)" onclick="set_highlight_user(&#39;1160802071&#39;)">
+        <span class="name">阿瑟夫_卡夫卡2</span>
+        <span class="info">
+          <span class="info-followers">488</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1837335093&#39;)" onclick="set_highlight_user(&#39;1837335093&#39;)">
+        <span class="name">MooN_Mu</span>
+        <span class="info">
+          <span class="info-followers">443</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1911475874&#39;)" onclick="set_highlight_user(&#39;1911475874&#39;)">
+        <span class="name">艾力克_浩</span>
+        <span class="info">
+          <span class="info-followers">426</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1294731265&#39;)" onclick="set_highlight_user(&#39;1294731265&#39;)">
+        <span class="name">德超_cuc</span>
+        <span class="info">
+          <span class="info-followers">325</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1906728953&#39;)" onclick="set_highlight_user(&#39;1906728953&#39;)">
+        <span class="name">哦啊依CAFA</span>
+        <span class="info">
+          <span class="info-followers">318</span>
+          <span class="info-posts">8</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1260739045&#39;)" onclick="set_highlight_user(&#39;1260739045&#39;)">
+        <span class="name">岳-珊</span>
+        <span class="info">
+          <span class="info-followers">290</span>
+          <span class="info-posts">8</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1748711681&#39;)" onclick="set_highlight_user(&#39;1748711681&#39;)">
+        <span class="name">Beyond独狼</span>
+        <span class="info">
+          <span class="info-followers">251</span>
+          <span class="info-posts">6</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1087877947&#39;)" onclick="set_highlight_user(&#39;1087877947&#39;)">
+        <span class="name">饭饭之交_s</span>
+        <span class="info">
+          <span class="info-followers">223</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2107782571&#39;)" onclick="set_highlight_user(&#39;2107782571&#39;)">
+        <span class="name">s苏苏苏苏苏</span>
+        <span class="info">
+          <span class="info-followers">196</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1916649462&#39;)" onclick="set_highlight_user(&#39;1916649462&#39;)">
+        <span class="name">STU_李静</span>
+        <span class="info">
+          <span class="info-followers">191</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2180701557&#39;)" onclick="set_highlight_user(&#39;2180701557&#39;)">
+        <span class="name">垚垚姐姐</span>
+        <span class="info">
+          <span class="info-followers">168</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1891902481&#39;)" onclick="set_highlight_user(&#39;1891902481&#39;)">
+        <span class="name">Tony余</span>
+        <span class="info">
+          <span class="info-followers">94</span>
+          <span class="info-posts">2</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1645365763&#39;)" onclick="set_highlight_user(&#39;1645365763&#39;)">
+        <span class="name">猫见皇后</span>
+        <span class="info">
+          <span class="info-followers">59</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2139415364&#39;)" onclick="set_highlight_user(&#39;2139415364&#39;)">
+        <span class="name">____喽嘿嘎</span>
+        <span class="info">
+          <span class="info-followers">31</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">6</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1097540531&#39;)" onclick="set_highlight_user(&#39;1097540531&#39;)">
+        <span class="name">西西2999</span>
+        <span class="info">
+          <span class="info-followers">23915</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2165273140&#39;)" onclick="set_highlight_user(&#39;2165273140&#39;)">
+        <span class="name">投行新闻</span>
+        <span class="info">
+          <span class="info-followers">22169</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1736464481&#39;)" onclick="set_highlight_user(&#39;1736464481&#39;)">
+        <span class="name">康少见</span>
+        <span class="info">
+          <span class="info-followers">12499</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1088413295&#39;)" onclick="set_highlight_user(&#39;1088413295&#39;)">
+        <span class="name">Easy</span>
+        <span class="info">
+          <span class="info-followers">4247</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1707895142&#39;)" onclick="set_highlight_user(&#39;1707895142&#39;)">
+        <span class="name">卞清</span>
+        <span class="info">
+          <span class="info-followers">1938</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1065207502&#39;)" onclick="set_highlight_user(&#39;1065207502&#39;)">
+        <span class="name">邓布利多</span>
+        <span class="info">
+          <span class="info-followers">1935</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1868262674&#39;)" onclick="set_highlight_user(&#39;1868262674&#39;)">
+        <span class="name">陪茄儿度过漫长岁月</span>
+        <span class="info">
+          <span class="info-followers">1819</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1276695923&#39;)" onclick="set_highlight_user(&#39;1276695923&#39;)">
+        <span class="name">黄加佳博</span>
+        <span class="info">
+          <span class="info-followers">1736</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1602797667&#39;)" onclick="set_highlight_user(&#39;1602797667&#39;)">
+        <span class="name">李川是个老夫子</span>
+        <span class="info">
+          <span class="info-followers">1663</span>
+          <span class="info-posts">2</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1733522384&#39;)" onclick="set_highlight_user(&#39;1733522384&#39;)">
+        <span class="name">Vincentotti阿hant</span>
+        <span class="info">
+          <span class="info-followers">1663</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1649303891&#39;)" onclick="set_highlight_user(&#39;1649303891&#39;)">
+        <span class="name">飞羽-MrsManUtd-Linsanity</span>
+        <span class="info">
+          <span class="info-followers">1257</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1676694397&#39;)" onclick="set_highlight_user(&#39;1676694397&#39;)">
+        <span class="name">娇原蛋白</span>
+        <span class="info">
+          <span class="info-followers">1093</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1596584412&#39;)" onclick="set_highlight_user(&#39;1596584412&#39;)">
+        <span class="name">JuliaFox朱莉娅福克斯</span>
+        <span class="info">
+          <span class="info-followers">1049</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1786739781&#39;)" onclick="set_highlight_user(&#39;1786739781&#39;)">
+        <span class="name">LF-林小可</span>
+        <span class="info">
+          <span class="info-followers">917</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2350096220&#39;)" onclick="set_highlight_user(&#39;2350096220&#39;)">
+        <span class="name">被封两次的老凤</span>
+        <span class="info">
+          <span class="info-followers">867</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1940578545&#39;)" onclick="set_highlight_user(&#39;1940578545&#39;)">
+        <span class="name">老石榴记</span>
+        <span class="info">
+          <span class="info-followers">856</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1612629374&#39;)" onclick="set_highlight_user(&#39;1612629374&#39;)">
+        <span class="name">南国的大婴儿</span>
+        <span class="info">
+          <span class="info-followers">762</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1658629491&#39;)" onclick="set_highlight_user(&#39;1658629491&#39;)">
+        <span class="name">刘言飞语rucuc</span>
+        <span class="info">
+          <span class="info-followers">733</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1243459665&#39;)" onclick="set_highlight_user(&#39;1243459665&#39;)">
+        <span class="name">李梦蝶butterf-ly</span>
+        <span class="info">
+          <span class="info-followers">709</span>
+          <span class="info-posts">2</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2266112353&#39;)" onclick="set_highlight_user(&#39;2266112353&#39;)">
+        <span class="name">亲爱的队长</span>
+        <span class="info">
+          <span class="info-followers">708</span>
+          <span class="info-posts">6</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1686717655&#39;)" onclick="set_highlight_user(&#39;1686717655&#39;)">
+        <span class="name">山茶花_hh</span>
+        <span class="info">
+          <span class="info-followers">606</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1501702961&#39;)" onclick="set_highlight_user(&#39;1501702961&#39;)">
+        <span class="name">温柔纯良我乐吉</span>
+        <span class="info">
+          <span class="info-followers">552</span>
+          <span class="info-posts">7</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1786575634&#39;)" onclick="set_highlight_user(&#39;1786575634&#39;)">
+        <span class="name">单面镜_玲</span>
+        <span class="info">
+          <span class="info-followers">464</span>
+          <span class="info-posts">3</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1715132384&#39;)" onclick="set_highlight_user(&#39;1715132384&#39;)">
+        <span class="name">李奕辉Ronnie</span>
+        <span class="info">
+          <span class="info-followers">464</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1774995402&#39;)" onclick="set_highlight_user(&#39;1774995402&#39;)">
+        <span class="name">However燃</span>
+        <span class="info">
+          <span class="info-followers">338</span>
+          <span class="info-posts">1</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1965267227&#39;)" onclick="set_highlight_user(&#39;1965267227&#39;)">
+        <span class="name">妄轻生</span>
+        <span class="info">
+          <span class="info-followers">250</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;2138021550&#39;)" onclick="set_highlight_user(&#39;2138021550&#39;)">
+        <span class="name">宋_小佳</span>
+        <span class="info">
+          <span class="info-followers">182</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1781864003&#39;)" onclick="set_highlight_user(&#39;1781864003&#39;)">
+        <span class="name">张忻怡Amy踏实学习不浮躁</span>
+        <span class="info">
+          <span class="info-followers">168</span>
+          <span class="info-posts">4</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+      <div class="userinfo" ondblclick="do_select_user_nodes(&#39;1984938577&#39;)" onclick="set_highlight_user(&#39;1984938577&#39;)">
+        <span class="name">我是_袁冲冲</span>
+        <span class="info">
+          <span class="info-followers">147</span>
+          <span class="info-posts">5</span>
+          <span class="info-reposts">5</span>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="rightlist-currenttweet" style="display:none;">
+  <h2 class="i18n i18n-current-tweet">选中的微博</h2>
+  <div id="current-tweet" style="height: 322px;">
+    <div id="current-tweet-parent" class="tweets"></div>
+    <div class="info">转发这条微博</div>
+    <div id="current-tweet-retweet">
+      <textarea id="current-tweet-retweet-text" onkeydown="event.stopPropagation();"></textarea>
+      <span class="button i18n i18n-do-repost" id="btn-do-repost">转发此微博</span>
+      <span id="btn-do-repost-status"></span>
+      <div class="display-none" id="current-tweet-retweet-id">!</div>
+    </div>
+    <div id="current-tweet-info" class="info"></div>
+    <div id="current-tweet-children" class="retweets"></div>
+  </div>
+</div>
+
+</div>
+</div>
+-->
+<!-- <div id="word-cloud">
+<div id="word-cloud-words">
+<span class="word" style="font-size:24px" onclick="do_select_keyword(this.innerHTML)">姚晨</span>
+<span class="word" style="font-size:19.876865879089884px" onclick="do_select_keyword(this.innerHTML)">明星</span>
+<span class="word" style="font-size:18.597280936539462px" onclick="do_select_keyword(this.innerHTML)">作业</span>
+<span class="word" style="font-size:18.19926351812879px" onclick="do_select_keyword(this.innerHTML)">新闻</span>
+<span class="word" style="font-size:18.086197552091683px" onclick="do_select_keyword(this.innerHTML)">学生</span>
+<span class="word" style="font-size:16.906849337202686px" onclick="do_select_keyword(this.innerHTML)">同学</span>
+<span class="word" style="font-size:16.763203007839437px" onclick="do_select_keyword(this.innerHTML)">姐姐</span>
+<span class="word" style="font-size:16.139061825755647px" onclick="do_select_keyword(this.innerHTML)">大姚</span>
+<span class="word" style="font-size:16.02564128821117px" onclick="do_select_keyword(this.innerHTML)">采访</span>
+<span class="word" style="font-size:15.402287862742456px" onclick="do_select_keyword(this.innerHTML)">传媒</span>
+<span class="word" style="font-size:15.043098776045841px" onclick="do_select_keyword(this.innerHTML)">机会</span>
+<span class="word" style="font-size:14.886936983152651px" onclick="do_select_keyword(this.innerHTML)">师妹</span>
+<span class="word" style="font-size:14.256822453899384px" onclick="do_select_keyword(this.innerHTML)">大学</span>
+<span class="word" style="font-size:14.041372717645473px" onclick="do_select_keyword(this.innerHTML)">力量</span>
+<span class="word" style="font-size:13.924624655435101px" onclick="do_select_keyword(this.innerHTML)">老师</span>
+<span class="word" style="font-size:13.800321514694px" onclick="do_select_keyword(this.innerHTML)">架子</span>
+<span class="word" style="font-size:13.178587088048973px" onclick="do_select_keyword(this.innerHTML)">孩子</span>
+<span class="word" style="font-size:12.680457572548491px" onclick="do_select_keyword(this.innerHTML)">学校</span>
+<span class="word" style="font-size:12.680457572548491px" onclick="do_select_keyword(this.innerHTML)">名人</span>
+<span class="word" style="font-size:12px" onclick="do_select_keyword(this.innerHTML)">粉丝</span>
+</div>
+<div id="word-cloud-mywords"></div>
+<div class="input">
+关键词：
+<input id="input-keyword-selection" type="text">
+<span class="cancel word" style="color: black;">取消</span>
+</div>
+</div>
+-->
+<div id="initial-load-status" style="display: none;">
+<div class="text load-status-300">
+ready.
+<div class="progress" style="width:300px;"></div>
+</div>
+</div>
+
+<div id="compare-box" class="draggable" style="right: 468px; bottom: 203.5px;">
+<div class="inner">
+<div class="top-right">
+我的积分:
+<span id="compare-score">--</span>
+金币:
+<span id="user-coins">10</span>
+<span class="button" id="compare-close">关闭</span>
+</div>
+<h2 class="title">小任务</h2>
+
+<div id="cb-importance-question" class="cb-question">
+<p style="line-height: 50px">
+  <img src="./static/em-question.gif" style="vertical-align: bottom; height: 50px;">哪个微博更重要呢？</p>
+<div class="selections"></div>
+</div>
+
+<div id="cb-role-question" class="cb-question">
+<p style="line-height: 50px">
+  <img src="./static/em-question.gif" style="vertical-align: bottom; height: 50px;">这个人在事件中的角色是什么呢？</p>
+<p class="person"></p>
+<p class="roles"></p>
+</div>
+<div id="cb-tweet-role-question" class="cb-question">
+<p style="line-height: 50px">
+  <img src="./static/em-question.gif" style="vertical-align: bottom; height: 50px;">这条微博在事件中的角色是什么呢？</p>
+<div class="tweet-container"></div>
+<p class="roles"></p>
+</div>
+<span class="button" id="compare-submit">提交</span>
+<span id="compare-submit-progress"></span>
+<span class="button" id="compare-change-tweets">换一组</span>
+
+</div>
+</div>
+
+<div id="submit-box">
+<div class="inner">
+<div class="share-controls">
+<h2>分享您的结果</h2>
+<p>
+  <span class="i18n i18n-submit-info">下图是您做出的结果，请点击“提交”按钮发布到您的微博。谢谢您对我们的支持！</span>
+</p>
+<p>
+  <textarea id="submit-text" onkeydown="event.stopPropagation();">
+    我正在使用#北京大学PKUVIS微博事件可视分析#，你也来试试！http://vis.pku.edu.cn/weibova/weiboevents
+  </textarea>
+</p>
+<p>
+  <span class="i18n i18n-share-weibo button" id="submit-submit">发表到我的微博</span>
+  <span class="button i18n i18n-paint" id="btn-paint" onclick="$(this).toggleClass(&#39;active&#39;); $(&#39;#graph-sketchpad&#39;).toggle();">添加标注</span>
+  <span id="submit-loading"></span>
+  <br>
+  <span class="button active" id="submit-img-view">发表主视图</span>
+  <span class="button" id="submit-img-tree">发表树状图</span>
+  <span class="i18n i18n-close button" id="submit-cancel">关闭</span>
+</p>
+</div>
+<div id="img-container-shadow"></div>
+<div class="img" id="img-container">
+<img id="submit-image" style="display:none;">
+<canvas id="canvas-submit-image" width="311" height="90"></canvas>
+</div>
+</div>
+</div>
+
+<!-- <div id="notification-box">
+<div class="inner">
+<div class="top-right">
+<span class="button" onclick="$(this).parent().parent().parent().fadeOut()">关闭</span>
+</div>
+<h2>调查问卷</h2>
+<p>
+感谢您对本工具的支持，现在邀请您填写一个调查问卷：
+<a href="http://diaochapai.com/survey682039">http://diaochapai.com/survey682039</a>
+</p>
+</div>
+</div>
+-->
+<div id="rating-box" style="display: block; top: -320px;">
+<div id="rating-box-inner">
+<div id="rating-box-real">
+<h2>给我们提建议</h2>
+<div>
+整体感觉：
+<div class="rating pkuvis-rating importance" id="submit-give-comments-rating" style="display:inline">
+  <span class="rating-1">★</span>
+  <span class="rating-2">★</span>
+  <span class="rating-3">★</span>
+  <span class="rating-4">☆</span>
+  <span class="rating-5">☆</span>
+</div>
+<br>
+<p>我的评价：</p>
+<textarea id="submit-give-comments-text" onkeydown="event.stopPropagation();"></textarea>
+</div>
+<p>希望加入这条微博：</p>
+<p>
+(输入微博地址，形如
+<span style="font-size:12px">http://weibo.com/1644225642/y7AaMAw3S</span>
+，一行一个)
+</p>
+<textarea id="submit-give-comments-weiboids" onkeydown="event.stopPropagation();"></textarea>
+<p>
+<span class="i18n i18n-submit button" id="submit-give-comments">提交</span>
+<span class="i18n i18n-cancel button" id="submit-give-comments-cancel">取消</span>
+<span id="submit-give-comments-status"></span>
+</p>
+</div>
+</div>
+</div>
+
+<!-- <div id="help-box" style="display: none; width: 510px; height: 490px; left: 428px; top: 76.5px;">
+<canvas id="help-bg" width="510" height="490"></canvas>
+<div id="help-content-w" style="width: 500px;">
+<span class="button" id="help-close" onclick="help_close();">✕</span>
+<div id="help-content">
+<h2>PKUVIS微博事件可视分析工具 - 使用说明</h2>
+<p>在通常的微博界面中，您看到的只是一条一条的微博，这样浏览并不容易看清事件的全貌。</p>
+<p>
+我们的可视分析工具，通过直观的视图来清晰得呈现微博转发的过程，使您更清晰得看到微博事件传播的过程，并对其中关键观点以及人物有更清晰的了解。同时，您还可以写出您的评价与看法，制成图分享。
+</p>
+<p>下面是简单的使用过程：</p>
+<p></p>
+<div style="width: 377px;height:261px">
+<img id="help-image" src="./static/help1.jpg" style="width: 377px;height:261px"></div>
+<p></p>
+<p>
+<span id="help-image-prev" class="button inactive" onclick="help_imageprev();">上一页</span>
+<span id="help-image-next" class="button" onclick="help_imagenext();">下一页</span>
+</p>
+</div>
+<div id="help-controls" style="display:none;">
+<span id="sp-help-info"></span>
+<span class="button" id="btn-help-next" onclick="help_next()">-&gt;</span>
+</div>
+</div>
+</div>
+-->
+<!-- <div id="browser-warning" style="display: none; z-index:100000; position:fixed; left: 20%; right: 20%; top:20%; text-align: left; background-color: #FCFCFC; padding: 1.5em; line-height: 2em; border: 3px solid #000;">
+<p>很抱歉，您正在使用的浏览器太旧了，无法运行本应用。</p>
+<p>请更新浏览器以获得更好的上网体验，下面是几个不错的选择：</p>
+<p>
+1、
+<a href="http://www.google.com.tw/chrome">Google Chrome 浏览器</a>
+</p>
+<p>
+2、
+<a href="http://www.mozilla.com/">Mozilla Firefox 浏览器</a>
+</p>
+<p>
+3、
+<a href="http://www.ie9.com/">升级到 IE 9 (需要 Win7)</a>
+</p>
+<p>如果您正在使用搜狗浏览器/360极速浏览器，请确认您在使用“高速/极速”模式。</p>
+
+</div>
+-->
+<script type="text/javascript" src="./static/frame.min.js"></script>
+<script type="text/javascript" src="./static/main.min.js"></script>
+
+<iframe id="rdbIndicator" width="100%" height="270" border="0" src="./static/indicator.htm" style="display: none; border: 0; position: fixed; left: 0; top: 0; z-index: 2147483647"></iframe>
+</body>
+</html>
