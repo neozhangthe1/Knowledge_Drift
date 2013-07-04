@@ -227,8 +227,8 @@ d3.sankey = function() {
 
       links.forEach(function(link) {
         // link.dy = link.value * ky;
-        link.dy1 = link.w1 * ky;
-        link.dy2 = link.w2 * ky;
+        link.dy1 = link.source.w * link.w1 * ky / d3.sum(link.source.sourceLinks, weight1);
+        link.dy2 = link.source.w * link.w2 * ky / d3.sum(link.target.targetLinks, weight2);
       });
     }
 

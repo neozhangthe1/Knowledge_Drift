@@ -474,8 +474,8 @@ def build_model():
     lda = None
     for y in doc_dict:
         if lda is None:
-            lda = gensim.models.ldamodel.LdaModel(corpus=doc_dict[y].values(), id2word=id2word, 
-                                        num_topics=30, update_every=1, chunksize=1, passes=1)   
+            lda = gensim.models.ldamodel.LdaModel(corpus=documents, id2word=id2word, 
+                                        num_topics=10, update_every=1, chunksize=1, passes=1)   
         else:
             lda.update(corpus=doc_dict[y].values())
         lda.save("lda-model-streamming-30-"+str(y))

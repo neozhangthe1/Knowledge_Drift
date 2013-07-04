@@ -36,8 +36,8 @@ def extractPublication(p):
 class TopicTrend(object):
     def __init__(self):
         print "INIT TOPIC TREND"
-        self.parse_topic_model()
-        self.parse_topic_graph()
+        #self.parse_topic_model()
+        #self.parse_topic_graph()
 
     def query_topic_trends(self, query, threshold=0.0001):
         print "MATCHING QUERY TO TOPICS", query, threshold
@@ -77,6 +77,9 @@ class TopicTrend(object):
         document_terms = {}
         document_authors = {}
         term_index = {}
+        publications = {}
+        corpus = defaultdict(dict)
+        year_term_person = defaultdict(lambda: defaultdict(set))
         #query authors and publications
         index = 0
         for a in x.authors:
@@ -84,32 +87,29 @@ class TopicTrend(object):
             result = data_center.getPublicationsByAuthorId([a.naid])
             print "found ", len(result.publications), "publications"
             person_index[a.naid] = index
-            corpus = ""
+            index += 1
+            text = ""
             for p in result.publications:
                 if p.year > 1990:
+                    publications[p.id] = p
                     children_ids, parents_ids, authors, author_ids = extractPublication(p)
-                    corpus += (p.title.lower() + " . " + p.abs.lower() +" . ")
+                    text += (p.title.lower() + " . " + p.abs.lower() +" . ")
+                    corpus[p.year][p.id] = text
                     for i in range(len(author_ids)):
                         author_name_dict[author_ids[i]] = authors[i]
                     year_publication[p.year].append(p.id)
-                    #for t in terms:
-                    #    key_terms[t.lower()] += 1
-                    #    year_terms[p.year][t.lower()] += 1
-                    #    term_person[t.lower()].add(a.naid)
-                    #document_terms[p.id] = terms
-                    #document_authors[p.id] = author_ids
-            terms = term_extractor.extractTerms(corpus)
+            terms = term_extractor.extractTerms(text)
             for t in terms:
                 term_person[t].add(a.naid)
-            for p in result.publications:
-                if p.year > 1990:
-                    for t in terms:
-                        key_terms[t.lower()] += 1
-                        year_terms[p.year][t.lower()] += 1
-                        term_person[t.lower()].add(a.naid)
-                    document_terms[p.id] = terms
-                    document_authors[p.id] = author_ids
-            index += 1
+        for y in corpus:
+            for d in corpus[y]:
+                text = corpus[y][d]
+                for t in term_person:
+                    if t in text:
+                        key_terms[t] += 1
+                        year_terms[y][t] += 1
+                        for a in publications[d].author_ids:
+                            year_term_person[y][t].add(a)
         index = 0 
         for t in key_terms:
             term_index[t] = index
@@ -144,14 +144,15 @@ class TopicTrend(object):
                 print "KMeans finished"
                 labels = kmeans.labels_
             else:
-                labels = [0 for i in range(len(feature_vectors))]
+                labels = [i for i in range(len(feature_vectors))]
             for i in range(len(labels)):
                 l = labels[i]
                 clusters[str(y)+"-"+str(l)].append(feature_term[i])
-                cluster_feature[l] += feature
-            for i in cluster_feature:
-                cluster_feature_vectors.append(cluster_feature[i])
-                cluster_feature_index[str(y)+"-"+str(labels[i])] = yindex
+                cluster_feature[l] += feature_vectors[i]
+            for i in range(len(labels)):
+                l = labels[i]
+                cluster_feature_vectors.append(cluster_feature[l])
+                cluster_feature_index[str(y)+"-"+str(l)] = yindex
                 yindex += 1 
             year_cluster_label[y] = clusters
         print "Global KMeans... "
@@ -169,7 +170,7 @@ class TopicTrend(object):
         for key in cluster_feature_index:
             xx = key.split("-")
             y = int(xx[0])
-            c = int(xx[1])
+            c = int(xx[1]) 
             l = kmeans.labels_[cluster_feature_index[key]]
             year_global_clusters[y][l].append(c)
             for k in clusters[key]:
@@ -188,8 +189,8 @@ class TopicTrend(object):
         for y in year_terms:
             for c1 in year_global_clusters[y]:
                 for c2 in year_global_clusters[y-1]:
-                    sim = len(set(year_global_clusters_terms[y][c1].keys()) 
-                              - set(year_global_clusters_terms[y-1][c2].keys()))
+                    sim = jaccard_similarity(set(year_global_clusters_terms[y][c1].keys()) 
+                              , set(year_global_clusters_terms[y-1][c2].keys()))
                     if sim > 0:
                         year_global_clusters_sim_target[str(y)+"-"+str(c1)][str(y-1)+"-"+str(c2)] = sim
                         year_global_clusters_sim_source[str(y-1)+"-"+str(c2)][str(y)+"-"+str(c1)] = sim
@@ -201,34 +202,6 @@ class TopicTrend(object):
                             "target":int(year_global_clusters_index[key2]),
                             "w1":year_global_clusters_sim_target[key1][key2]/float(m1),
                             "w2":year_global_clusters_sim_target[key1][key2]/float(m2)})
-
-        #for y in year_terms:
-        #    for c in clusters:
-        #        # cluster_year_weight[y][c] = cluster_year_weight[y-1][c]
-        #        for k in clusters[c]:
-        #            cluster_year_weight[y][c] += year_terms[y][k]
-        #    z = max(cluster_year_weight[y].values())
-        #    if z == 0:
-        #        z = 1
-        #    for c in clusters:
-        #        cluster_year_weight[y][c] /= z
-        #node_dict = {}
-        #index = 0
-        #for c in clusters:
-        #    pre = None
-        #    for y in cluster_year_weight:
-        #        graph["nodes"].append({"name":",".join(clusters[c]), 
-        #                               "pos":y-min(cluster_year_weight.keys()), 
-        #                               "w":cluster_year_weight[y][c],
-        #                               "cluster":int(c)})
-        #        node_dict[str(y)+"-"+str(c)] = index
-        #        if pre is not None:
-        #            graph["links"].append({"source":pre,
-        #                                    "target":index,
-        #                                    "w1":1,
-        #                                    "w2":1})
-        #        pre = index
-        #        index += 1
         return graph
 
     def query_terms_1(self, q):
@@ -239,7 +212,9 @@ class TopicTrend(object):
         key_terms = defaultdict(int)
         year_terms = defaultdict(lambda: defaultdict(int))
         term_person = defaultdict(set)
+        year_term_person = defaultdict(lambda: defaultdict(set))
         person_index = {}
+        publications = {}
         corpus = defaultdict(dict)
         #query authors and publications
         index = 0
@@ -252,6 +227,7 @@ class TopicTrend(object):
             text = ""
             for p in result.publications:
                 if p.year > 1990:
+                    publications[p.id] = p
                     children_ids, parents_ids, authors, author_ids = extractPublication(p)
                     text += (p.title.lower() + " . " + p.abs.lower() +" . ")
                     corpus[p.year][p.id] = text
@@ -261,18 +237,22 @@ class TopicTrend(object):
             terms = term_extractor.extractTerms(text)
             for t in terms:
                 term_person[t].add(a.naid)
+                
         for y in corpus:
-            for text in corpus[y].values():
+            for d in corpus[y]:
+                text = corpus[y][d]
                 for t in term_person:
                     if t in text:
                         key_terms[t] += 1
                         year_terms[y][t] += 1
+                        for a in publications[d].author_ids:
+                            year_term_person[y][t].add(a)
         #build feature vectors
         feature_vectors = []
         feature_index = {}
         sorted_terms = sorted(key_terms.items(), key = lambda x: x[1], reverse=True)
         index = 0
-        for k in sorted_terms:
+        for k in sorted_terms[:100]:
             feature_index[k[0]] = index
             feature = [0.0 for i in range(len(x.authors))]
             for a in term_person[k[0]]:
@@ -294,6 +274,13 @@ class TopicTrend(object):
                 z = 1
             for c in clusters:
                 cluster_year_weight[y][c] /= z
+        person_year_cluster = defaultdict(lambda :defaultdict(set))
+        for y in year_terms:
+            for c in clusters:
+                for k in clusters[c]:
+                    for p in year_term_person[y][k]:
+                        person_year_cluster[y][c].add(p)
+
         graph = []
         for c in clusters:
             layer = {"terms":[],"nodes":[]}
