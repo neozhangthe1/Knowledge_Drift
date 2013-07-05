@@ -3,6 +3,12 @@
 <div class="navbar-form pull-left" style="padding-bottom:20px">
   <input type="text" class="span2" id="topic-trend-search-text">
   <input type="text" class="span2" id="topic-trend-search-threshold">
+  Time Window
+  <input type="text" class="span2" id="topic-trend-search-timewindow">
+  Start Time
+  <input type="text" class="span2" id="topic-trend-search-start">
+  End Time
+  <input type="text" class="span2" id="topic-trend-search-end">
   <button type="submit" class="btn" id="topic-trend-search">Submit</button>
 </div>
 
@@ -753,7 +759,7 @@ var svg = d3.select("#chart").append("svg")
 
 var sankey = d3.sankey()
     .nodeWidth(0)
-    .nodePadding(10)
+    .nodePadding(15)
     .size([width, height]);
 
 var path = sankey.link();
@@ -794,7 +800,7 @@ function render_people(q){
 function render_topic(q, threshold){
   svg.remove();
   svg = d3.select("#chart").append("svg")
-    .attr("width", 16000)//width + margin.left + margin.right)
+    .attr("width", 1280)//width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
     .attr("id","trend")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
@@ -816,19 +822,14 @@ function render_topic(q, threshold){
     .attr("offset", function(d) { return d.offset; })
     .attr("stop-color", function(d) { return d.color; });
 
-  var x = d3.scale.linear()
-        .range([1991,2013])
+  var x = d3.scale.linear().range(energy.time_slides);
 
   var axis = svg.append("g").selectAll(".axis")
-      .data(function(){
-        d = [];
-        for(var i = 1991; i < 2014; i++) d.push(i);
-        return d;
-      })
+      .data(energy.time_slides)
       .enter().append("g")
       .attr("class", "axis")
-      .attr("transform", function(d) { 
-        return "translate(" + (d-1991) * 150 + "," + 0 + ")"; 
+      .attr("transform", function(d, i) { 
+        return "translate(" + (i) * 120 + "," + 0 + ")"; 
       })
 
 
@@ -854,7 +855,7 @@ function render_topic(q, threshold){
       .attr("dy", ".0em")
       .attr("text-anchor", "end")
       .attr("transform", null)
-      .text(function(d) { return d; })
+      .text(function(d, i) { return d[0]; })
       .attr("x", 6)
       .attr("text-anchor", "start")
       .style("font-weight", "bold");
@@ -879,9 +880,9 @@ function render_topic(q, threshold){
         .attr("x2", d.target.x).attr("y2", 0)
         .selectAll("stop")
         .data([
-          {offset: "0%", color: color(d.source.name[0])},
+          {offset: "0%", color: color(d.source.cluster)},
           // {offset: "50%", color: "gray"},
-          {offset: "100%", color: color(d.target.name[0])}
+          {offset: "100%", color: color(d.target.cluster)}
         ])
       .enter().append("stop")
         .attr("offset", function(d) { return d.offset; })
@@ -907,7 +908,7 @@ function render_topic(q, threshold){
       .attr("height", function(d) { return d.dy; })
       .attr("width", sankey.nodeWidth())
       .style("fill", function(d) {
-       return d.color = color(d.name[0]);
+       return d.color = color(d.cluster);
      })
       .style("stroke", function(d) { return d.color;})//d3.rgb(d.color).darker(2); })
     .append("title")
@@ -919,7 +920,7 @@ function render_topic(q, threshold){
       .attr("dy", ".35em")
       .attr("text-anchor", "end")
       .attr("transform", null)
-      .text(function(d) { return d.name.split("-")[0]; })
+      .text(function(d) { return d.cluster+"-"+d.name; })
     .filter(function(d) { return d.x < width / 2; })
       .attr("x", 6 + sankey.nodeWidth())
       .attr("text-anchor", "start");

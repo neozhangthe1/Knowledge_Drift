@@ -3,10 +3,10 @@ svg {
 }
 
 #chart {
-  height: 350px;
+  height: 450px;
   padding-top: 20px;
   clear: both;
-  overflow-x: scroll; 
+  overflow-x: hidden; 
 }
 
 .node rect {

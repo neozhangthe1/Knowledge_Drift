@@ -152,7 +152,7 @@ d3.sankey = function() {
     //     nextNodes,
     //     x = 0;
     nodes.forEach(function(node){
-      node.x = node.pos * 150;
+      node.x = node.pos * 120;
       node.dx = nodeWidth;
     })
 
@@ -228,7 +228,7 @@ d3.sankey = function() {
       links.forEach(function(link) {
         // link.dy = link.value * ky;
         link.dy1 = link.source.w * link.w1 * ky / d3.sum(link.source.sourceLinks, weight1);
-        link.dy2 = link.source.w * link.w2 * ky / d3.sum(link.target.targetLinks, weight2);
+        link.dy2 = link.target.w * link.w2 * ky / d3.sum(link.target.targetLinks, weight2);
       });
     }
 

@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>70f34f44-79bb-419c-be90-97b6342bfabc</ProjectGuid>
     <ProjectHome>..\</ProjectHome>
-    <StartupFile>server.py</StartupFile>
+    <StartupFile>topic_trend_analysis.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
