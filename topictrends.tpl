@@ -740,8 +740,7 @@ University of British Columbia
 </t:block>
 -->
 </div>
-<script src="/static/d3.v3.min.js"></script>
-<script src="/static/js/sankey.js"></script>
+
 <script>
 
 var margin = {top: 1, right: 1, bottom: 6, left: 1},
@@ -779,7 +778,7 @@ var y = d3.scale.linear()
     .range([height, 0]);
 
 d3.select("#topic-trend-search").on("click",function(e){
-  render_topic($("#topic-trend-search-text").val(), parseFloat($("#topic-trend-search-threshold").val()));
+  render_topic($("#topic-trend-search-text").val(), parseInt($("#topic-trend-search-start").val()), parseInt($("#topic-trend-search-end").val()), parseInt($("#topic-trend-search-timewindow").val()));
 })
 
 
@@ -789,7 +788,7 @@ function resize_chart(){
 
 resize_chart();
 window.onresize = resize_chart();
-render_topic("deep learning", 0.0001);
+render_topic("deep learning", 0, 10000);
 document.getElementById("topic-trend-search-text").value ="deep learning";
 document.getElementById("topic-trend-search-threshold").value =0.0001;
 
@@ -797,7 +796,7 @@ function render_people(q){
 
 }
 
-function render_topic(q, threshold){
+function render_topic(q, start, end){
   svg.remove();
   svg = d3.select("#chart").append("svg")
     .attr("width", 1280)//width + margin.left + margin.right)
@@ -805,7 +804,42 @@ function render_topic(q, threshold){
     .attr("id","trend")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-  d3.json("/academic/terms?q="+q+"&threshold="+threshold, function(energy) {
+  d3.json("/academic/terms?q="+q+"&start="+start+"&end="+end, function(energy) {
+        
+    d3.layout.cloud().size([300, 300])
+    .words(energy.terms)
+    .rotate(function () { return ~~(Math.random() * 2) * 90; })
+    .font("Impact")
+    .fontSize(function (d) {
+        return d.freq;
+    })
+    .on("end", draw)
+    .start();
+
+  function draw(words) {
+    d3.select("body").append("svg")
+        .attr("width", 300)
+        .attr("height", 300)
+      .append("g")
+        .attr("transform", "translate(150,150)")
+      .selectAll("text")
+        .data(words)
+      .enter().append("text")
+        .style("font-size", function (d) {
+            return d.size + "px";
+        })
+        .style("font-family", "Impact")
+        .style("fill", function (d, i) {
+            return color(i);
+        })
+        .attr("text-anchor", "middle")
+        // .attr("transform", function(d) {
+        //   return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
+        // })
+        .text(function (d) {
+            return d.t;
+        });
+  }
 
   svg.append("linearGradient")
     .attr("id", "temperature-gradient")
@@ -871,7 +905,8 @@ function render_topic(q, threshold){
       .attr("class", "link")
       .attr("d", path)
       .style("stroke-width", function(d) { return 20 })
-      .style("fill", function(d) { 
+      .style("fill-opacity", .6)
+      .style("fill", function(d) {
         var key = "gradient-"+d.source_index+"-"+d.target_index;
         svg.append("linearGradient")
         .attr("id", key)
@@ -884,15 +919,15 @@ function render_topic(q, threshold){
           // {offset: "50%", color: "gray"},
           {offset: "100%", color: color(d.target.cluster)}
         ])
-      .enter().append("stop")
+        .enter().append("stop")
         .attr("offset", function(d) { return d.offset; })
         .attr("stop-color", function(d) { return d.color; });
           return d.color = "url(#"+key+")";//color(d.source.name[0]);//
-      })
+        })
       .sort(function(a, b) { return b.dy - a.dy; });
 
   link.append("title")
-      .text(function(d) { return d.source.name + " → " + d.target.name + "\n" + format(d.value); });
+      .text(function(d) { return d.source.name + " → " + d.target.name; });
 
   var node = svg.append("g").selectAll(".node")
       .data(energy.nodes)

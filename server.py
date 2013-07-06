@@ -75,8 +75,10 @@ def search(data):
 @route('/<data>/terms')
 def search(data):
     q = request.query.q or ''
-    print 'rendering terms for', q, 'on', data
-    return topic_trend_client.query_terms(q)
+    start = int(request.query.start) or 0
+    end = int(request.query.end) or 10000
+    print 'rendering terms for', q, 'on', data, 'between', start, "and", end
+    return topic_trend_client.query_terms(q, start_time=start, end_time=end)
 
 @route('/<data>/render')
 def topic_trends(data):

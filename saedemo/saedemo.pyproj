@@ -5,7 +5,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>70f34f44-79bb-419c-be90-97b6342bfabc</ProjectGuid>
     <ProjectHome>..\</ProjectHome>
-    <StartupFile>topic_trend_analysis.py</StartupFile>
+    <StartupFile>server.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -38,12 +38,24 @@
     <Compile Include="teclient\__init__.py" />
     <Compile Include="topic_trend_analysis.py" />
     <Compile Include="topictrend\__init__.py" />
+    <Compile Include="utils\algorithms.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="utils\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Content Include="static\bootstrap\css\bootstrap-responsive.css" />
     <Content Include="static\bootstrap\css\bootstrap-responsive.min.css" />
     <Content Include="static\bootstrap\css\bootstrap.css" />
     <Content Include="static\bootstrap\css\bootstrap.min.css" />
     <Content Include="static\bootstrap\img\glyphicons-halflings-white.png" />
     <Content Include="static\bootstrap\img\glyphicons-halflings.png" />
+    <Content Include="utils\algorithms.pyc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="utils\__init__.pyc">
+      <SubType>Content</SubType>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="dcclient" />
@@ -53,6 +65,7 @@
     <Folder Include="static\bootstrap\css" />
     <Folder Include="static\bootstrap\img" />
     <Folder Include="topictrend\" />
+    <Folder Include="utils\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
 </Project>

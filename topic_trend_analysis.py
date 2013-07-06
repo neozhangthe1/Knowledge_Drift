@@ -164,21 +164,22 @@ class TopicTrend(object):
                                     self.term_freq_given_person_time[i][t, self.author_index[a]] += 1
 
     def search_document_by_author(self, a, start_time=0, end_time=10000):
-        logging.info("querying documents for %s" % a.names)
+        logging.info("querying documents for %s from %s to %s" % (a.names, start_time, end_time))
         result = data_center.getPublicationsByAuthorId([a.naid])
         logging.info("found %s documents" % len(result.publications))
         #text for extract key terms
         text = ""
         for p in result.publications:
             #update time info
-            if p.year > start_time and p.year < end_time:
+            if p.year >= start_time and p.year <= end_time:
                 self.set_time(p.year)
                 text += (p.title.lower() + " . " + p.abs.lower() +" . ")
                 #insert document
                 self.append_documents(p)
         return text
 
-    def search_author(self, q, time_window):
+    def search_author(self, q, time_window, start_time, end_time):
+        print q, time_window, start_time, end_time
         self.author_result = data_center.searchAuthors(q)
         term_set = set()
         index = 0
@@ -186,7 +187,7 @@ class TopicTrend(object):
             #insert author
             self.append_authors(a)
             #search for document
-            text = self.search_document_by_author(a)
+            text = self.search_document_by_author(a, start_time=start_time, end_time=end_time)
             #extract terms
             terms = term_extractor.extractTerms(text)
             for t in terms:
@@ -239,7 +240,7 @@ class TopicTrend(object):
                 #    self.global_clusters[l].append(w)
 
     def build_graph(self):
-        self.graph = {"nodes":[], "links":[]}
+        self.graph = {"nodes":[], "links":[], "terms":[]}
         global_clusters_index = {}
         index = 0
         for time in range(self.num_time_slides):
@@ -263,7 +264,7 @@ class TopicTrend(object):
                 sorted_terms = sorted(terms, key=lambda t: self.term_freq[t], reverse=True)
                 sorted_terms_given_time = sorted(terms, key=lambda t: self.term_freq_given_time[time][t], reverse=True)
                 self.graph["nodes"].append({"key":[{"term":self.term_list[k], "w":int(self.term_freq_given_time[time][k])} for k in sorted_terms_given_time], 
-                                        "name":self.term_list[sorted_terms_given_time[0]]+"-"+self.term_list[sorttied_terms[0]],
+                                        "name":self.term_list[sorted_terms_given_time[0]]+"-"+self.term_list[sorted_terms[0]],
                                         "pos":time, 
                                         "w":cluster_weight_given_time[i]/cluster_weight_sum_given_time*(document_count+1),
                                         "cluster":i})
@@ -291,12 +292,6 @@ class TopicTrend(object):
                             if sim > 0:
                                 global_clusters_sim_target[key1][key2] = sim
                                 global_clusters_sim_source[key2][key1] = sim
-            #for c in range(self.num_global_clusters):
-            #    key1 = str(time)+"-"+str(i1)
-            #    key2 = str(time-1)+"-"+str(i2)
-            #    if global_clusters_index.has_key(key1) and global_clusters_index.has_key(key2):
-            #        global_clusters_sim_target[key1][key2] = 1
-            #        global_clusters_sim_source[key2][key1] = 1
         for key1 in global_clusters_sim_target:
             if global_clusters_index.has_key(key1):
                 m1 = sum(global_clusters_sim_target[key1].values())
@@ -307,6 +302,16 @@ class TopicTrend(object):
                                     "target":int(global_clusters_index[key1]),
                                     "w1":global_clusters_sim_target[key1][key2]/float(m1),
                                     "w2":global_clusters_sim_target[key1][key2]/float(m2)})
+        #term frequence
+        sorted_terms = sorted(self.term_list, key=lambda t: self.term_freq[self.term_index[t]], reverse=True)
+        for t in sorted_terms:
+            item = {"t":t, "idx":int(self.term_index[t]), "freq":int(self.term_freq[self.term_index[t]]), "dist":[0 for i in range(self.num_time_slides)], "cluster":[0 for i in range(self.num_time_slides)]}
+            for time in range(self.num_time_slides):
+                item["dist"][time] = int(self.term_freq_given_time[time][self.term_index[t]])
+                #for cluster in self.global_clusters[time]:
+                #    for c in cluster:
+                #        for w in self.local_clusters[time][c]:
+            self.graph["terms"].append(item)
         self.graph["time_slides"] = self.time_slides
         return self.graph
 
@@ -321,7 +326,8 @@ class TopicTrend(object):
         self.num_documents = 0
         self.term_index = {}
         self.num_terms = 0
-        self.search_author(q, time_window, start_time, end_time)
+        print q, time_window, start_time, end_time
+        self.search_author(q, time_window=time_window, start_time=start_time, end_time=end_time)
         #local clustering
         self.local_clusters = [None for i in range(self.num_time_slides)]
         for time in range(self.num_time_slides):
