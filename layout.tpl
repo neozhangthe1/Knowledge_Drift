@@ -4,7 +4,6 @@
 %				"/static/d3.v3.min.js",
 %               "/static/js/d3.layout.cloud.js",
 %               "/static/js/sankey.js"]
-]
 
 <!DOCTYPE html>
 <html lang="en">

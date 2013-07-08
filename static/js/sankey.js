@@ -4,7 +4,8 @@ d3.sankey = function() {
       nodePadding = 8,
       size = [1, 1],
       nodes = [],
-      links = [];
+      links = [],
+      items = [];
 
   sankey.nodeWidth = function(_) {
     if (!arguments.length) return nodeWidth;
@@ -30,6 +31,12 @@ d3.sankey = function() {
     return sankey;
   };
 
+  sankey.items = function(_) {
+    if (!arguments.length) return items;
+    items = _;
+    return sankey;
+  };
+
   sankey.size = function(_) {
     if (!arguments.length) return size;
     size = _;
@@ -42,6 +49,7 @@ d3.sankey = function() {
     computeNodeBreadths();
     computeNodeDepths(iterations);
     computeLinkDepths();
+    computeItemNode();
     return sankey;
   };
 
@@ -64,21 +72,6 @@ d3.sankey = function() {
 
   sankey.link = function() {
     var curvature = .5;
-
-    function link_old(d) {
-      var x0 = d.source.x + d.source.dx,
-          x1 = d.target.x,
-          xi = d3.interpolateNumber(x0, x1),
-          x2 = xi(curvature),
-          x3 = xi(1 - curvature),
-          y0 = d.source.y + d.sy + d.dy / 2,
-          y1 = d.target.y + d.ty + d.dy / 2;
-      return "M" + x0 + "," + y0
-           + "C" + x2 + "," + y0
-           + " " + x3 + "," + y1
-           + " " + x1 + "," + y1;
-    }
-
     function link(d) {
       var x0 = d.source.x + d.source.dx,
           x1 = d.target.x,
@@ -141,6 +134,19 @@ d3.sankey = function() {
       //   d3.sum(node.targetLinks, value)
       // );
     });
+  }
+
+  function computeItemNode() {
+    items.forEach(function(item) {
+      item.node.forEach(function(node){
+        node_id = node;
+        node = {};
+        node.cluster = nodes[node];
+      })
+      item.start.node_id = item.start.node;
+      item.start.node = nodes[item.start.node_id];
+    })
+
   }
 
   // Iteratively assign the breadth (x-position) for each node.

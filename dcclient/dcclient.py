@@ -26,7 +26,7 @@ class DataCenterClient(object):
     def __init__(self, endpoint):
         self.endpoint = endpoint
 
-    def searchAuthors(self, query, returned_fields=["naid", "names", "email"]):
+    def searchAuthors(self, query, returned_fields=["naid", "names", "email", "pub_count", "h_index"]):
         params = interface_pb2.StringQueryParams()
         params.query = query
         params.offset = 0

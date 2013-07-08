@@ -2,11 +2,27 @@ svg {
   font: 10px sans-serif;
 }
 
+.navbar{
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+.container{
+
+  width: 95%;
+}
 #chart {
-  height: 450px;
-  padding-top: 20px;
+  position:fixed;
+  right:0;
+  left:250px;
+  bottom: 0;
+  top:40px;
+  /*height: 600px;*/
+  /*padding-top: 20px;*/
   clear: both;
-  overflow-x: hidden; 
+  overflow-x: scroll; 
+  margin-top: 30px;
 }
 
 .node rect {

@@ -17,7 +17,6 @@ body {
     overflow: hidden;
     font-size: 14px;
     font-family: Arial ,"Microsoft YaHei",Simsun;
-    background: rgb(14, 21, 30);
 }
 
 #toolbar {
@@ -88,7 +87,7 @@ body {
     position: fixed;
     left: 0; right: 240px; bottom: 0;
     box-shadow: 0 0 10px rgba(0,0,0,0.4);
-    background-color: rgba(31,119,180,0.1);
+    background-color: rgba(255,255,255,1);
 }
 
 #overview {
@@ -460,8 +459,8 @@ body {
 
 #right-box {
     position:fixed;
-    right: 0;
-    top: 30px;
+    left: 0;
+    top: 40px;
     bottom: 0px;
     z-index: 5;
     box-shadow: 0 0 10px rgba(0,0,0,0.4);
@@ -492,15 +491,15 @@ body {
     width: 55px;
     text-align: right;
 }
-#user-lists, #current-tweet {
+#people-lists, #current-tweet {
     overflow-y: scroll;
     overflow-x: hidden;
-    height: 300px;
+    height: 500px;
     border: 1px solid rgba(31,119,180,0.7);
     border-radius: 4px;
     margin: 2px;
 }
-#user-lists .userinfo {
+#people-lists .userinfo {
     height: 16px;
     font-size: 13px;
     line-height: 16px;
@@ -509,42 +508,42 @@ body {
     cursor: pointer;
     overflow: hidden;
 }
-#user-lists .userinfo:nth-child(odd) {
+#people-lists .userinfo:nth-child(odd) {
     background-color: rgb(233,242,248);
 }
-#user-lists .header {
+#people-lists .header {
     height: 20px;
     line-height:20px;
     padding-left: 3px;
     background-color: rgba(31,119,180, 0.2);
     border-bottom: 1px solid rgba(31,119,180, 0.7);
 }
-#user-lists .userinfo:hover {
+#people-lists .userinfo:hover {
     background-color: rgb(31,119,180);
     color: white;
 }
-#user-lists .userinfo .name {
+#people-lists .userinfo .name {
     position: absolute;
     left: 5px;
     max-width: 90px;
     word-break: keep-all;
     white-space:nowrap;
 }
-#user-lists .userinfo .info {
+#people-lists .userinfo .info {
     background-color:white;
 }
-#user-lists .userinfo:nth-child(odd) .info {
+#people-lists .userinfo:nth-child(odd) .info {
     background-color: rgb(233,242,248);
 }
-#user-lists .userinfo:hover .info {
+#people-lists .userinfo:hover .info {
     background-color:rgb(31,119,180);
 }
-#user-lists .info .info-followers { color: #8c564b; }
-#user-lists .info .info-posts { color: #9467bd; min-width: 1.4em; }
-#user-lists .info .info-reposts { color: #1f77b4; min-width: 1.4em; }
-#user-lists .info span { display: inline-block; text-align: right; }
-#user-lists .header { position: relative; }
-#user-lists .header .info {
+#people-lists .info .info-followers { color: #8c564b; }
+#people-lists .info .info-posts { color: #9467bd; min-width: 1.4em; }
+#people-lists .info .info-reposts { color: #1f77b4; min-width: 1.4em; }
+#people-lists .info span { display: inline-block; text-align: right; }
+#people-lists .header { position: relative; }
+#people-lists .header .info {
     font-family: Georgia;
     display: block;
     position: absolute;
@@ -553,14 +552,14 @@ body {
     top: 0;
     font-size: 12px;
 }
-#user-lists .header .info > span { cursor: pointer; }
-#user-lists .header .info > span:hover {
+#people-lists .header .info > span { cursor: pointer; }
+#people-lists .header .info > span:hover {
     background-color: rgba(31,119,180, 0.2);
 }
-#user-lists .header .info > span.active {
+#people-lists .header .info > span.active {
     text-decoration: underline;
 }
-#user-lists .userinfo .info {
+#people-lists .userinfo .info {
     font-family: Georgia;
     display: block;
     position: absolute;
