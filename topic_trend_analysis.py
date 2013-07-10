@@ -58,7 +58,7 @@ class TopicTrend(object):
         self.stop_words = ["data set", "training data", "experimental result", 
                            "difficult learning problem", "user query", "case study", 
                            "web page", "data source", "proposed algorithm", 
-                           "proposed method", "real data"]
+                           "proposed method", "real data", "international conference"]
 
     def query_topic_trends(self, query, threshold=0.0001):
         logging.info("MATCHING QUERY TO TOPICS", query, threshold)
@@ -189,6 +189,14 @@ class TopicTrend(object):
                                     self.term_freq_given_person_time[i][t, self.author_index[a]] += 1
         self.smooth_term_frequence_given_person_by_average()
 
+    def smooth_term_frequence_given_person_by_incremental(self):
+        for i in range(1, self.num_time_slides):
+            for t in range(self.num_terms):
+                for a in range(self.num_authors):
+                    self.term_freq_given_person_time[i][t, a] += self.term_freq_given_person_time[i-1][t, a]
+                     
+
+
     def smooth_term_frequence_given_person_by_average(self):
         for t in range(self.num_terms):
             for a in range(self.num_authors):
@@ -276,7 +284,25 @@ class TopicTrend(object):
                 sim = jaccard_similarity(items[i], items[j])
                 X[i, j] == sim
                 X[j, i] == sim
-        return X          
+        return X   
+    
+    def build_global_feature_vectors_by_jaccard_with_weight(self):
+        index = 0
+        self.gloabl_feature_vectors_index = [{} for i in range(self.num_time_slides)]
+        dim = self.num_time_slides*self.num_local_clusters
+        items = []
+        X = np.zeros((dim, dim))
+        for t in range(self.num_time_slides):
+            for i, cluster in enumerate(self.local_clusters[t]):
+                items.append(cluster)
+                self.gloabl_feature_vectors_index[t][i] = index
+                index += 1
+        for i in range(dim):
+            for j in range(i, dim):
+                sim = jaccard_similarity(items[i], items[j])
+                X[i, j] == sim
+                X[j, i] == sim
+        return X               
 
     def global_clustering(self):
         num_clusters=self.num_global_clusters

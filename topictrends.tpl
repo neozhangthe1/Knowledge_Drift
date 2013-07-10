@@ -305,7 +305,7 @@ function render_topic(q, start, end){
 
 
   energy.terms.sort(function(a, b){
-    return a.start.year - b.start.year;
+    return b.start.year - a.start.year;
   })
 
   var item = svg.append("g").selectAll(".item")
@@ -359,7 +359,7 @@ function render_topic(q, start, end){
   .style("fill", "#60aFe9");
 
   bunch.append("text")
-  .attr("text-anchor","start")
+  .attr("text-anchor","end")
   .attr("transform", function(d) {
     return "translate(" + [x(d.start.year), 0] + ")rotate(" + 0 + ")";
   })
