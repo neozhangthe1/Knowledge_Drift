@@ -3,7 +3,7 @@ sys.path.append("../")
 
 from dcclient.dcclient import DataCenterClient
 from teclient.teclient import TermExtractorClient
-from utils.algorithms import jaccard_similarity
+from utils.algorithms import *
 from collections import defaultdict
 from bs4 import UnicodeDammit
 import numpy as np
@@ -55,14 +55,41 @@ class TopicTrend(object):
         self.global_clusters = None
         self.global_cluster_labels = None
         self.gloabl_feature_vectors_index = None
-        #self.parse_topic_model()
-        #self.parse_topic_graph()
         self.graph = None
         self.stop_words = ["data set", "training data", "experimental result", 
                            "difficult learning problem", "user query", "case study", 
                            "web page", "data source", "proposed algorithm", 
                            "proposed method", "real data", "international conference"]
 
+    """
+    current method using term extractor and 2 level clustering
+    """
+    def query_terms(self, q, time_window=None, start_time=None, end_time=None):
+        #query documents and caculate term frequence
+        self.author_list = []
+        self.author_index = {}
+        self.num_documents = 0
+        self.document_list = []
+        self.document_list_given_time = defaultdict(list)
+        self.document_index = {}
+        self.num_documents = 0
+        self.term_index = {}
+        self.num_terms = 0
+        print q, time_window, start_time, end_time
+        self.search_author(q, time_window=time_window, start_time=start_time, end_time=end_time)
+        #local clustering
+        self.local_clusters = [None for i in range(self.num_time_slides)]
+        self.local_cluster_labels = [None for i in range(self.num_time_slides)]
+        for time in range(self.num_time_slides):
+            self.local_clustering(time)
+        #global clustering
+        self.global_clustering_by_spectral()
+        graph = self.build_graph()
+        return graph
+
+    """
+    old method using topic modeling
+    """
     def query_topic_trends(self, query, threshold=0.0001):
         logging.info("MATCHING QUERY TO TOPICS", query, threshold)
         query = query.lower()
@@ -89,11 +116,49 @@ class TopicTrend(object):
         print len(choose_topic), "topics are choosed"
         return self.render_topic_graph(choose_topic)   
 
+    def search_document_by_author(self, a, start_time=0, end_time=10000):
+        logging.info("querying documents for %s from %s to %s" % (a.names, start_time, end_time))
+        result = data_center.getPublicationsByAuthorId([a.naid])
+        logging.info("found %s documents" % len(result.publications))
+        #text for extract key terms
+        text = ""
+        for p in result.publications:
+            #update time info
+            if p.year >= start_time and p.year <= end_time:
+                self.set_time(p.year)
+                text += (p.title.lower() + " . " + p.abs.lower() +" . ")
+                #insert document
+                self.append_documents(p)
+        return text
+
+    def search_author(self, q, time_window, start_time, end_time):
+        print q, time_window, start_time, end_time
+        self.author_result = data_center.searchAuthors(q)
+        term_set = set()
+        index = 0
+        for a in self.author_result.authors:
+            #insert author
+            self.append_authors(a)
+            #search for document
+            text = self.search_document_by_author(a, start_time=start_time, end_time=end_time)
+            #extract terms
+            terms = term_extractor.extractTerms(text)
+            for t in terms:
+                if t not in self.stop_words:
+                    term_set.add(t)
+        self.set_terms(term_set)
+        #caculate term frequence
+        self.caculate_term_frequence_given_document()
+        #update time slides
+        self.set_time_slides(time_window)
+        self.caculate_term_frequence_given_time()
+        self.smooth_term_frequence_given_person_by_average()
+
     """
     setter
     """
     #there will be 10 time window by default
-    def set_time_slides(self, time_window):
+    def set_time_slides_(self, time_window):
         if time_window is not None:
             self.time_window = time_window
         else:
@@ -107,6 +172,27 @@ class TopicTrend(object):
                 cur_slide.append(cur_time)
                 cur_time += 1
             self.time_slides.append(cur_slide)
+
+    #the lastest year will be a standalone time slide
+    def set_time_slides(self, time_window):
+        logging.info("setting time slides")
+        if time_window is not None:
+            self.time_window = time_window
+        else:
+            self.time_window = 1 + int(np.floor((float(self.end_time-1 - self.start_time) / 11)))
+        self.num_time_slides = int(np.ceil((float(self.end_time-1 - self.start_time) / self.time_window)))
+        self.time_slides = [[] for i in range(self.num_time_slides)]
+        self.time_slides[self.num_time_slides-1].append(self.end_time)
+        cur_time = self.end_time-1
+        for i in range(self.num_time_slides-2, -1, -1):
+            for j in range(self.time_window):
+                self.time_slides[i].append(cur_time)
+                cur_time -= 1
+                print self.time_slides
+                if cur_time < self.start_time:
+                    logging.info("current:%s, start:%s, end:%s"%(cur_time, self.start_time, self.end_time))
+                    return
+
 
     def set_time(self, time):
         if time < self.start_time or self.start_time is None:
@@ -197,8 +283,6 @@ class TopicTrend(object):
             for t in range(self.num_terms):
                 for a in range(self.num_authors):
                     self.term_freq_given_person_time[i][t, a] += self.term_freq_given_person_time[i-1][t, a]
-                     
-
 
     def smooth_term_frequence_given_person_by_average(self):
         for t in range(self.num_terms):
@@ -206,45 +290,6 @@ class TopicTrend(object):
                 avg = self.term_freq_given_person[t, a] / float(self.num_time_slides)
                 for i in range(self.num_time_slides):
                     self.term_freq_given_person_time[i][t, a] += avg
-
-
-    def search_document_by_author(self, a, start_time=0, end_time=10000):
-        logging.info("querying documents for %s from %s to %s" % (a.names, start_time, end_time))
-        result = data_center.getPublicationsByAuthorId([a.naid])
-        logging.info("found %s documents" % len(result.publications))
-        #text for extract key terms
-        text = ""
-        for p in result.publications:
-            #update time info
-            if p.year >= start_time and p.year <= end_time:
-                self.set_time(p.year)
-                text += (p.title.lower() + " . " + p.abs.lower() +" . ")
-                #insert document
-                self.append_documents(p)
-        return text
-
-    def search_author(self, q, time_window, start_time, end_time):
-        print q, time_window, start_time, end_time
-        self.author_result = data_center.searchAuthors(q)
-        term_set = set()
-        index = 0
-        for a in self.author_result.authors:
-            #insert author
-            self.append_authors(a)
-            #search for document
-            text = self.search_document_by_author(a, start_time=start_time, end_time=end_time)
-            #extract terms
-            terms = term_extractor.extractTerms(text)
-            for t in terms:
-                if t not in self.stop_words:
-                    term_set.add(t)
-        self.set_terms(term_set)
-        #caculate term frequence
-        self.caculate_term_frequence_given_document()
-        #update time slides
-        self.set_time_slides(time_window)
-        self.caculate_term_frequence_given_time()
-        self.smooth_term_frequence_given_person_by_average()
         
     def local_clustering(self, time):
         num_clusters=self.num_local_clusters
@@ -290,6 +335,7 @@ class TopicTrend(object):
         return X   
     
     def build_global_feature_vectors_by_jaccard_with_weight(self):
+        #weight of the term denotes by term frequence
         index = 0
         self.gloabl_feature_vectors_index = [{} for i in range(self.num_time_slides)]
         dim = self.num_time_slides*self.num_local_clusters
@@ -302,7 +348,7 @@ class TopicTrend(object):
                 index += 1
         for i in range(dim):
             for j in range(i, dim):
-                sim = jaccard_similarity(items[i], items[j])
+                sim = jaccard_similarity_with_weight(items[i], items[j], self.term_freq)
                 X[i, j] == sim
                 X[j, i] == sim
         return X               
@@ -328,7 +374,7 @@ class TopicTrend(object):
 
     def global_clustering_by_spectral(self):
         num_clusters = self.num_global_clusters
-        X = self.build_global_feature_vectors_by_jaccard()
+        X = self.build_global_feature_vectors_by_jaccard_with_weight()
         logging.info("Global spectral clustering...")
         spectral = spectral_clustering(X, n_clusters=num_clusters, eigen_solver='arpack')
         logging.info("Global spectral finished")
@@ -458,28 +504,6 @@ class TopicTrend(object):
         self.graph["time_slides"] = self.time_slides
         return self.graph
 
-    def query_terms(self, q, time_window=None, start_time=None, end_time=None):
-        #query documents and caculate term frequence
-        self.author_list = []
-        self.author_index = {}
-        self.num_documents = 0
-        self.document_list = []
-        self.document_list_given_time = defaultdict(list)
-        self.document_index = {}
-        self.num_documents = 0
-        self.term_index = {}
-        self.num_terms = 0
-        print q, time_window, start_time, end_time
-        self.search_author(q, time_window=time_window, start_time=start_time, end_time=end_time)
-        #local clustering
-        self.local_clusters = [None for i in range(self.num_time_slides)]
-        self.local_cluster_labels = [None for i in range(self.num_time_slides)]
-        for time in range(self.num_time_slides):
-            self.local_clustering(time)
-        #global clustering
-        self.global_clustering_by_spectral()
-        graph = self.build_graph()
-        return graph
 
 
 def main():
