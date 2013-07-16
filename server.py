@@ -1,9 +1,8 @@
 #!env python2
-
 import os.path
 from bottle import route, run, template, view, static_file, request, urlencode
 from dcclient import DataCenterClient
-from topic_trend_analysis import TopicTrend
+from topictrend import TopicTrend
 import sample_data
 
 client = DataCenterClient("tcp://10.1.1.211:32011")

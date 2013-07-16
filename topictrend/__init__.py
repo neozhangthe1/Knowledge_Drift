@@ -1,0 +1,1 @@
+from topic_trend_analysis import TopicTrend

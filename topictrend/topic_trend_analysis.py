@@ -1,3 +1,6 @@
+import sys
+sys.path.append("../")
+
 from dcclient.dcclient import DataCenterClient
 from teclient.teclient import TermExtractorClient
 from utils.algorithms import jaccard_similarity
