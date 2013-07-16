@@ -56,6 +56,37 @@ svg {
     font-size: 13px;
 }
 
+/* Start by setting display:none to make this hidden.
+   Then we position it in relation to the viewport window
+   with position:fixed. Width, height, top and left speak
+   speak for themselves. Background we set to 80% white with
+   our animation centered, and no-repeating */
+.modal-loading {
+    display:    none;
+    position:   fixed;
+    z-index:    1000;
+    right:0;
+    left:250px;
+    bottom: 0;
+    top:40px;
+    background: rgba( 255, 255, 255, .8 ) 
+                url('http://sampsonresume.com/labs/pIkfp.gif') 
+                50% 50% 
+                no-repeat;
+}
+
+/* When the body has the loading class, we turn
+   the scrollbar off with overflow:hidden */
+#chart.loading {
+    overflow: hidden;   
+}
+
+/* Anytime the body has the loading class, our
+   modal element will be visible */
+#chart.loading .modal-loading {
+    display: block;
+}
+
 
 /*************************************************************
  * box
