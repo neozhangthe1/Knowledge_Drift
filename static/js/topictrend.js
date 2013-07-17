@@ -240,7 +240,7 @@ function render_topic(q, start, end) {
 			}) //d3.rgb(d.color).darker(2); })
 			.style("stroke-width", function(d) {
 				return 0;
-			}
+			})
 			.style("opacity", function(d) {
 				return 0.6;
 			})
