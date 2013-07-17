@@ -59,7 +59,8 @@ class TopicTrend(object):
         self.stop_words = ["data set", "training data", "experimental result", 
                            "difficult learning problem", "user query", "case study", 
                            "web page", "data source", "proposed algorithm", 
-                           "proposed method", "real data", "international conference"]
+                           "proposed method", "real data", "international conference",
+                           "proposed approach"]
 
     """
     current method using term extractor and 2 level clustering
@@ -439,16 +440,16 @@ class TopicTrend(object):
                             for c in c2:
                                 for w in self.local_clusters[time][c]:
                                     terms2.append(w)
-                            sim = jaccard_similarity(terms1, terms2)
+                            sim = jaccard_similarity_with_weight(terms1, terms2, self.term_freq)
                             if sim > 0:
                                 global_clusters_sim_target[key1][key2] = sim
                                 global_clusters_sim_source[key2][key1] = sim
-            for i, c in enumerate(self.global_clusters[time]):
-                key1 = str(time)+"-"+str(i)
-                key2 = str(time-1)+"-"+str(i)
-                if global_clusters_index.has_key(key1) and global_clusters_index.has_key(key2):
-                    global_clusters_sim_target[key1][key2] = 1.
-                    global_clusters_sim_source[key2][key1] = 1.
+            #for i, c in enumerate(self.global_clusters[time]):
+            #    key1 = str(time)+"-"+str(i)
+            #    key2 = str(time-1)+"-"+str(i)
+            #    if global_clusters_index.has_key(key1) and global_clusters_index.has_key(key2):
+            #        global_clusters_sim_target[key1][key2] = 1.
+            #        global_clusters_sim_source[key2][key1] = 1.
         for key1 in global_clusters_sim_target:
             if global_clusters_index.has_key(key1):
                 m1 = sum(global_clusters_sim_target[key1].values())
