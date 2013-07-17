@@ -238,6 +238,9 @@ function render_topic(q, start, end) {
 			.style("stroke", function(d) {
 				return d.color;
 			}) //d3.rgb(d.color).darker(2); })
+			.style("stroke-width", function(d) {
+				return 0;
+			}
 			.style("opacity", function(d) {
 				return 0.6;
 			})
