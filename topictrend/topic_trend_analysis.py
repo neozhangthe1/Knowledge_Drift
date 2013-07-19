@@ -440,7 +440,7 @@ class TopicTrend(object):
                             for c in c2:
                                 for w in self.local_clusters[time][c]:
                                     terms2.append(w)
-                            sim = jaccard_similarity_with_weight(terms1, terms2, self.term_freq)
+                            sim = common_word_with_weight(terms1, terms2, self.term_freq)
                             if sim > 0:
                                 global_clusters_sim_target[key1][key2] = sim
                                 global_clusters_sim_source[key2][key1] = sim
@@ -468,6 +468,7 @@ class TopicTrend(object):
             for d in self.reverse_term_dict[term_index]:
                 term_year[self.document_list[d].year].append(d)
             sorted_term_year = sorted(term_year.items(), key=lambda t:t[0])
+            print sorted_term_year
             start_point = sorted_term_year[0][0]
             start_time = self.get_time_slide(start_point)
             start_cluster = self.global_cluster_labels[start_time][self.local_cluster_labels[start_time][term_index]]

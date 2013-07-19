@@ -1,3 +1,6 @@
+"""
+similarity measures
+"""
 def jaccard_similarity(d1, d2):
     s1 = set(d1)
     s2 = set(d2)
@@ -21,3 +24,14 @@ def jaccard_similarity_with_weight(d1, d2, weight):
     for x in union:
         u += weight[x]
     return i / u
+
+def common_word_with_weight(d1, d2, weight):
+    s1 = set(d1)
+    s2 = set(d2)
+    intersect = s1.intersection(s2)
+    i = .0
+    for x in intersect:
+        i += weight[x]
+    return i
+
+
