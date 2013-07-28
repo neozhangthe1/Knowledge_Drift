@@ -19,6 +19,13 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 
 class TopicTrend(object):
     def __init__(self):
+        self.stop_words = ["data set", "training data", "experimental result", 
+                           "difficult learning problem", "user query", "case study", 
+                           "web page", "data source", "proposed algorithm", 
+                           "proposed method", "real data", "international conference",
+                           "proposed approach"]
+
+    def init_topic_trend(self):
         print "INIT TOPIC TREND"
         self.author_result = None
         #term info
@@ -55,17 +62,14 @@ class TopicTrend(object):
         self.global_clusters = None
         self.global_cluster_labels = None
         self.gloabl_feature_vectors_index = None
+        self.term_first_given_person = None
         self.graph = None
-        self.stop_words = ["data set", "training data", "experimental result", 
-                           "difficult learning problem", "user query", "case study", 
-                           "web page", "data source", "proposed algorithm", 
-                           "proposed method", "real data", "international conference",
-                           "proposed approach"]
 
     """
     current method using term extractor and 2 level clustering
     """
     def query_terms(self, q, time_window=None, start_time=None, end_time=None):
+        self.init_topic_trend()
         #query documents and caculate term frequence
         self.author_list = []
         self.author_index = {}
@@ -181,7 +185,7 @@ class TopicTrend(object):
             self.time_window = time_window
         else:
             self.time_window = 1 + int(np.floor((float(self.end_time-1 - self.start_time) / 11)))
-        self.num_time_slides = int(np.ceil((float(self.end_time-1 - self.start_time) / self.time_window)))
+        self.num_time_slides = int(np.ceil((float(self.end_time-1 - self.start_time) / self.time_window))) + 1
         self.time_slides = [[] for i in range(self.num_time_slides)]
         self.time_slides[self.num_time_slides-1].append(self.end_time)
         cur_time = self.end_time-1
@@ -193,7 +197,6 @@ class TopicTrend(object):
                 if cur_time < self.start_time:
                     logging.info("current:%s, start:%s, end:%s"%(cur_time, self.start_time, self.end_time))
                     return
-
 
     def set_time(self, time):
         if time < self.start_time or self.start_time is None:
@@ -248,6 +251,7 @@ class TopicTrend(object):
         self.term_freq_given_time = np.zeros((self.num_time_slides, self.num_terms))
         self.term_freq_given_person = np.zeros((self.num_terms, self.num_authors))
         self.term_freq_given_person_time = [np.zeros((self.num_terms, self.num_authors)) for i in range(self.num_time_slides)]
+        self.term_first_given_person = [{} for i in range(self.num_terms)]
         for i in range(self.num_time_slides):
             for y in self.time_slides[i]:
                 for d in self.document_list_given_time[y]:
@@ -257,6 +261,11 @@ class TopicTrend(object):
                             if self.author_index.has_key(a):
                                 self.term_freq_given_person[t, self.author_index[a]] += 1
                                 self.term_freq_given_person_time[i][t, self.author_index[a]] += 1
+                                if self.term_first_given_person[t].has_key(a):
+                                    if self.term_first_given_person[t][a] > y:
+                                            self.term_first_given_person[t][a] = y
+                                else:
+                                    self.term_first_given_person[t][a] = y
 
     def caculate_term_frequence_(self):
         #init term frequence
@@ -264,6 +273,7 @@ class TopicTrend(object):
         self.term_freq_given_time = np.zeros((self.num_time_slides, self.num_terms))
         self.term_freq_given_person = np.zeros((self.num_terms, self.num_authors))
         self.term_freq_given_person_time = [np.zeros((self.num_terms, self.num_authors)) for i in range(self.num_time_slides)]
+        self.term_first_given_person = [{} for i in range(self.num_time_slides)]
         for i in range(self.num_time_slides):
             for y in self.time_slides[i]:
                 for d in self.document_list_given_time[y]:
@@ -277,6 +287,11 @@ class TopicTrend(object):
                                     #logging.info("i:%s,y:%s,d:%s,text:%s,t:%s,a:%s"%(i,y,d,text,t,a))
                                     self.term_freq_given_person[t, self.author_index[a]] += 1
                                     self.term_freq_given_person_time[i][t, self.author_index[a]] += 1
+                                    if self.term_first_given_person[t].has_key(a):
+                                        if self.term_first_given_person[t][a] > y:
+                                            self.term_first_given_person[t][a] = y
+                                    else:
+                                        self.term_first_given_person[t][a] = y
         self.smooth_term_frequence_given_person_by_average()
 
     def smooth_term_frequence_given_person_by_incremental(self):
@@ -462,13 +477,19 @@ class TopicTrend(object):
                                     "w2":global_clusters_sim_target[key1][key2]/float(m2)})
         #term frequence
         sorted_terms = sorted(self.term_list, key=lambda t: self.term_freq[self.term_index[t]], reverse=True)
-        for t in sorted_terms[:20]:
+        for t in sorted_terms:
             term_index = self.term_index[t]
             term_year = defaultdict(list)
             for d in self.reverse_term_dict[term_index]:
                 term_year[self.document_list[d].year].append(d)
             sorted_term_year = sorted(term_year.items(), key=lambda t:t[0])
-            print sorted_term_year
+            if len(sorted_term_year) == 0:
+                continue
+            ty = {}
+            for i in range(self.start_time+1, self.end_time):
+                ty[i] = 0.0
+            for c in term_year:
+                ty[c] = len(term_year[c])
             start_point = sorted_term_year[0][0]
             start_time = self.get_time_slide(start_point)
             start_cluster = self.global_cluster_labels[start_time][self.local_cluster_labels[start_time][term_index]]
@@ -476,10 +497,11 @@ class TopicTrend(object):
             item = {"t":t, "idx":int(term_index), 
                     "freq":int(self.term_freq[term_index]), 
                     "dist":[0 for i in range(self.num_time_slides)], 
-                    "year":[{"y":j[0], "d":j[1]} for j in sorted_term_year],
+                    "year":[{"y":j, "d":ty[j]} for j in ty],
                     "cluster":[0 for i in range(self.num_time_slides)],
                     "node":[0 for i in range(self.num_time_slides)],
                     "doc":[int(d) for d in self.reverse_term_dict[term_index]],
+                    "first":[{"p":p, "y":self.term_first_given_person[term_index][p]} for p in self.term_first_given_person[term_index]],
                     "start":{"year":int(start_point), 
                              "time":int(start_time), 
                              "cluster":int(start_cluster),

@@ -33,6 +33,9 @@
     <Compile Include="dcclient\__init__.py" />
     <Compile Include="teclient\extract_aminer.py" />
     <Compile Include="teclient\teclient.py" />
+    <Compile Include="topictrend\knowledge_drift.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="topictrend\topic_trend_analysis.py" />
     <Compile Include="teclient\__init__.py" />
     <Compile Include="topictrend\__init__.py" />

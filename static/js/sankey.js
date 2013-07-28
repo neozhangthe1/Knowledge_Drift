@@ -2,6 +2,7 @@ d3.sankey = function() {
   var sankey = {},
       nodeWidth = 24,
       nodePadding = 8,
+      nodeOffset = 200,
       size = [1, 1],
       nodes = [],
       links = [],
@@ -18,6 +19,12 @@ d3.sankey = function() {
     nodePadding = +_;
     return sankey;
   };
+
+  sankey.nodeOffset = function (_) {
+    if (!arguments.length) return nodeOffset;
+    nodeOffset = +_;
+    return sankey;
+  }
 
   sankey.nodes = function(_) {
     if (!arguments.length) return nodes;
@@ -158,7 +165,7 @@ d3.sankey = function() {
     //     nextNodes,
     //     x = 0;
     nodes.forEach(function(node){
-      node.x = node.pos * 120;
+      node.x = node.pos * nodeOffset;
       node.dx = nodeWidth;
     })
 
@@ -209,7 +216,6 @@ d3.sankey = function() {
         .entries(nodes)
         .map(function(d) { return d.values; });
 
-    //
     initializeNodeDepth();
     resolveCollisions();
     for (var alpha = 1; iterations > 0; --iterations) {
