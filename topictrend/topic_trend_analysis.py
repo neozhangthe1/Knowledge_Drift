@@ -55,8 +55,8 @@ class TopicTrend(object):
         self.start_time = None
         self.end_time = None
         #cluster info
-        self.num_local_clusters = 5
-        self.num_global_clusters = 5
+        self.num_local_clusters = 3
+        self.num_global_clusters = 3
         self.local_clusters = None
         self.local_cluster_labels = None
         self.global_clusters = None
