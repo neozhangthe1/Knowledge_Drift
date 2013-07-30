@@ -1,5 +1,6 @@
 #!env python2
 import socket
+from bs4 import UnicodeDammit
 
 def request(text):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  
