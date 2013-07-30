@@ -22,7 +22,7 @@ var chart = d3.select("#chart").append("svg")
 
 
 var sankey = d3.sankey()
-	.nodeWidth(50)
+	.nodeWidth(0)
 	.nodePadding(15)
 	.size([width, 300]);
 
