@@ -97,13 +97,13 @@ function render_topic(q, start, end) {
 		//data transformation
 		var terms = {};
 		energy.terms.forEach(function(t) {
-			term = {};
-			term.t = t.t;
-			term.freq = t.freq;
-			term.dist = t.dist;
-			term.year = t.year;
-			term.cluster = t.cluster;
-			terms[t.t] = term;
+			// term = {};
+			// term.t = t.t;
+			// term.freq = t.freq;
+			// term.dist = t.dist;
+			// term.year = t.year;
+			// term.cluster = t.cluster;
+			terms[t.t] = t;
 		})
 
 		var people = {};
@@ -139,15 +139,12 @@ function render_topic(q, start, end) {
 			.enter()
 			.append("g")
 			.attr("class", "term")
-			.attr("transform", function(d, i) {
-				return "translate(" + [0, i * timeline_item_offset + 20] + ")rotate(" + 0 + ")";
+			.attr("id", function(d){
+				return "term-"+d.idx;
 			})
-			.on("click", function(d) {
-				draw_flow(d);
-				SVGRect = this.getBBox();
-				d3.select(".strong")
-					.remove()
-				d3.select(this)
+			.attr("transform", function(d, i) {
+				if(d.t == q){
+					d3.select(this)
 					.append("rect")
 					.attr("class","strong")
 					.attr("x","0px")
@@ -156,6 +153,12 @@ function render_topic(q, start, end) {
 					.attr("height", SVGRect.height)
 					.style("fill","#9900FF")
 					.style("fill-opacity", 0.2);
+				}
+				return "translate(" + [0, i * timeline_item_offset + 20] + ")rotate(" + 0 + ")";
+			})
+			.on("click", function(d) {
+				draw_flow(d);
+
 			})
 
 		hist.append("rect")
@@ -413,6 +416,21 @@ function render_topic(q, start, end) {
 				.attr("transform", function(d) {
 					return "translate(" + [0, 350] + ")rotate(" + 0 + ")";
 				});
+			d3.select(".strong").remove()
+			// SVGRect = d3.select("#term-"+data.idx).getBBox();
+			d3.select("#term-"+data.idx)
+				.append("rect")
+				.attr("class","strong")
+				.attr("x","0px")
+				.attr("y", function(d){
+					return 0;
+				})
+				.attr("width", "300px")
+				.attr("height",  function(d){
+					return 19;
+				})
+				.style("fill","#9900FF")
+				.style("fill-opacity", 0.2);
 			// flow.append("line")
 			// 	.attr("x1", function(d){
 			// 		return 0;
@@ -442,7 +460,7 @@ function render_topic(q, start, end) {
 				.size([])
 
 			var channels=[]
-			for(var i=0; i<20; i++){
+			for(var i=0; i<40; i++){
 				channels[i] = [];
 			}
 			var people_flow = flow.append("g").selectAll(".people")
@@ -454,7 +472,7 @@ function render_topic(q, start, end) {
 				.attr("class", "people")
 				.attr("transform", function(d, i) {
 					var c = 0
-					for(var i = 0; i < 20; i++){
+					for(var i = 0; i < 40; i++){
 						if(channels[i].length > 0){
 							if(d.y - d3.max(channels[i]) < 4){
 								continue;
@@ -464,15 +482,15 @@ function render_topic(q, start, end) {
 						break;						
 					}
 					if(i%2 == 0){
-						return "translate(" + [x(d.y), 200 -i/2 * 20] + ")rotate(" + 0 + ")";
+						return "translate(" + [x(d.y), 200 -i/2 * 12] + ")rotate(" + 0 + ")";
 					}else{
-						return "translate(" + [x(d.y), 200 +(i+1)/2 * 20] + ")rotate(" + 0 + ")";
+						return "translate(" + [x(d.y), 200 +(i+1)/2 * 12] + ")rotate(" + 0 + ")";
 					}
 					
 				});
 			people_flow.append("text")
 				.attr("text-anchor", "end")
-				.style("font-size", 12)
+				.style("font-size", 10)
 				.attr("dy", ".85em")
 				.attr("transform", function(d) {
 					return "translate(" + [-6, -6] + ")rotate(" + 0 + ")";
@@ -483,7 +501,7 @@ function render_topic(q, start, end) {
 			people_flow.append("circle")
 				.attr("cx", 0)
 				.attr("cy", 0)
-				.attr("r", 6)
+				.attr("r", 5)
 				.style("stroke-width", 1)
 				.style("stroke", function(d) {
 					return "#eee";
@@ -508,7 +526,7 @@ function render_topic(q, start, end) {
 			// 	})
 		}
 
-		draw_flow(energy.terms[1]);
+		draw_flow(terms[q]);
 
 
 		// 	.selectAll(".bunch")
