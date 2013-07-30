@@ -1,7 +1,6 @@
 import sys
 sys.path.append("../")
 
-from dcclient.dcclient import DataCenterClient
 from teclient.teclient import TermExtractorClient
 from utils.algorithms import *
 from collections import defaultdict
@@ -12,10 +11,11 @@ import gensim
 import pickle
 import networkx as nx
 import logging
+import urllib, urllib2
 from sklearn.cluster import Ward, KMeans, MiniBatchKMeans, spectral_clustering
-data_center = DataCenterClient("tcp://10.1.1.211:32011")
 term_extractor = TermExtractorClient()
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+pminer_url = "http://pminer.org/services/search/patent?start=0&num=1000&q="
 
 class TopicTrend(object):
     def __init__(self):
@@ -96,34 +96,17 @@ class TopicTrend(object):
         graph = self.build_graph()
         return graph
 
-    """
-    old method using topic modeling
-    """
-    def query_topic_trends(self, query, threshold=0.0001):
-        logging.info("MATCHING QUERY TO TOPICS", query, threshold)
-        query = query.lower()
-        words = []
-        choose_topic = defaultdict(list)
-        #check if the term is in the vocabulary
-        if query in self.vocab:
-            print "FOUND WORD", query, self.vocab[query]
-            words.append(self.vocab[query])
-        #if not, check if the words in the term exists in the vocabulary
-        else:
-            terms = query.split(" ")
-            for t in terms:
-                if t in self.vocab:
-                    print "FOUND WORD", t, self.vocab[t]
-                    words.append(self.vocab[t]) 
-        #choose topics related to the query term
-        for y in self.p_topic_given_term_y:
-            for t in words:
-                p_topic = self.p_topic_given_term_y[y][t]
-                for i in range(len(p_topic)):
-                    if p_topic[i] > threshold:
-                        choose_topic[y].append(i)
-        print len(choose_topic), "topics are choosed"
-        return self.render_topic_graph(choose_topic)   
+    def search_patent(self, q):
+        logging.info("querying patent from pminer for %s ..." % q)
+        response = urllib.urlopen(pminer_url+'"'+q+'"')
+        data = json.loads(response.read())
+        logging.info("got %s patents" % len(data))
+        company_dict = {}
+        terms_given_document = []
+        for p in data:
+            for c in range(len(p["company_id_array"])):
+                company_dict[p["company_id_array"][c]] = p["company_name_array"][c]
+
 
     def search_document_by_author(self, a, start_time=0, end_time=10000):
         logging.info("querying documents for %s from %s to %s" % (a.names, start_time, end_time))

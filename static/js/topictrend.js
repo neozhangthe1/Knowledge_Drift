@@ -58,7 +58,7 @@ d3.select("#topic-trend-search").on("click", function(e) {
 })
 
 var timeline = d3.select("#right-box").append("svg");
-var bar_pos = 120;
+var bar_pos = 170;
 var timeline_item_offset = 20;
 var ball_radius = 6;
 var hist_height = 100;
@@ -111,6 +111,10 @@ function render_topic(q, start, end) {
 			people[t.id] = t;
 		})
 
+		timeline.attr("height", function(d){
+			return 20 * energy.terms.length;
+		})
+
 		//right box, hist diagram
 		timeline.append("line")
 			.attr("x1", bar_pos + 10)
@@ -140,6 +144,18 @@ function render_topic(q, start, end) {
 			})
 			.on("click", function(d) {
 				draw_flow(d);
+				SVGRect = this.getBBox();
+				d3.select(".strong")
+					.remove()
+				d3.select(this)
+					.append("rect")
+					.attr("class","strong")
+					.attr("x","0px")
+					.attr("y",SVGRect.y)
+					.attr("width", "300px")
+					.attr("height", SVGRect.height)
+					.style("fill","#9900FF")
+					.style("fill-opacity", 0.2);
 			})
 
 		hist.append("rect")
@@ -153,7 +169,7 @@ function render_topic(q, start, end) {
 			.attr("width", function(d) {
 				return hist_height * d.freq / max_freq;
 			})
-			.style("fill-opacity", 0.5)
+			.style("fill-opacity", 0.7)
 			.style("fill", "#60aFe9");
 
 		hist.append("text")
@@ -203,7 +219,7 @@ function render_topic(q, start, end) {
 				return 0;
 			})
 			.attr("y2", function(d) {
-				return 1000;
+				return height;
 			})
 			.style("stroke", function(d) {
 				return "lightgray";

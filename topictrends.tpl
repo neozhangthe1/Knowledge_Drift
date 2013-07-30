@@ -7,7 +7,7 @@
 </div>
 <div id="bottom-box" ></div>
 
-<div id="right-box">
+<div id="right-box" style="overflow:auto; width:300px;">
   <script type="text/javascript">
 
 
