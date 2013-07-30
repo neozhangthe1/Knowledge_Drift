@@ -57,11 +57,7 @@ d3.select("#topic-trend-search").on("click", function(e) {
 	render_topic($("#topic-trend-search-text").val(), 0, 10000); // parseInt($("#topic-trend-search-start").val()), parseInt($("#topic-trend-search-end").val()), parseInt($("#topic-trend-search-timewindow").val()));
 })
 
-var timeline = d3.select("#right-box").append("svg");
-var bar_pos = 120;
-var timeline_item_offset = 20;
-var ball_radius = 6;
-var hist_height = 100;
+
 // function resize_chart(){
 //   d3.select("#chart").style("width", (window.width - 2 * 50)+"px");
 // }
@@ -72,7 +68,9 @@ var hist_height = 100;
 // document.getElementById("topic-trend-search-text").value ="deep learning";
 // document.getElementById("topic-trend-search-threshold").value =0.0001;
 
+function render_people(q) {
 
+}
 
 function render_topic(q, start, end) {
 	chart.remove();
@@ -86,9 +84,6 @@ function render_topic(q, start, end) {
 
 	chart.append("line").attr("x1", 0).attr("x2", width).attr("y1", 330).attr("y2", 330)
 		.style("stroke", "darkgray").style("stroke-width", 1);
-
-	timeline.remove();
-	timeline = d3.select("#right-box").append("svg");
 
 	$("#chart").addClass("loading");
 
@@ -111,6 +106,12 @@ function render_topic(q, start, end) {
 			people[t.id] = t;
 		})
 
+		var timeline = d3.select("#right-box").append("svg");
+		var bar_pos = 120;
+		var timeline_item_offset = 20;
+		var ball_radius = 6;
+		var hist_height = 100;
+
 		//right box, hist diagram
 		timeline.append("line")
 			.attr("x1", bar_pos + 10)
@@ -126,7 +127,6 @@ function render_topic(q, start, end) {
 				max_freq = d.freq;
 			}
 		});
-
 
 		var hist =
 			timeline.append("g")
@@ -301,9 +301,9 @@ function render_topic(q, start, end) {
 			.style("stroke", function(d) {
 				return d.color;
 			}) //d3.rgb(d.color).darker(2); })
-			.style("stroke-width", function(d) {
-				return 0;
-			})
+		.style("stroke-width", function(d) {
+			return 0;
+		})
 			.style("opacity", function(d) {
 				return 0.6;
 			})
@@ -419,48 +419,25 @@ function render_topic(q, start, end) {
 				.style("fill", "#60afe9")
 
 			var count = 0;
-			var people_flow = d3.layout.force()
-				.linkDistance(80)
-				.charge(-120)
-				.gravity(.05)
-				.size([])
-
-			var channels=[]
-			for(var i=0; i<20; i++){
-				channels[i] = [];
-			}
 			var people_flow = flow.append("g").selectAll(".people")
 				.data(data.first.sort(function(a,b){
-					return a.y - b.y
+					return b.y - a.y
 				}))
 				.enter()
 				.append("g")
 				.attr("class", "people")
 				.attr("transform", function(d, i) {
-					var c = 0
-					for(var i = 0; i < 20; i++){
-						if(channels[i].length > 0){
-							if(d.y - d3.max(channels[i]) < 4){
-								continue;
-							}
-						}
-						channels[i].push(d.y);
-						break;						
+					count ++;
+					if(count==5){
+						count = 0;
 					}
-					if(i%2 == 0){
-						return "translate(" + [x(d.y), 200 -i/2 * 20] + ")rotate(" + 0 + ")";
-					}else{
-						return "translate(" + [x(d.y), 200 +(i+1)/2 * 20] + ")rotate(" + 0 + ")";
-					}
-					
+					d.offset = count
+					return "translate(" + [x(d.y), count * 20] + ")rotate(" + 0 + ")";
 				});
 			people_flow.append("text")
 				.attr("text-anchor", "end")
 				.style("font-size", 12)
 				.attr("dy", ".85em")
-				.attr("transform", function(d) {
-					return "translate(" + [-6, -6] + ")rotate(" + 0 + ")";
-				})
 				.text(function(d) {
 					return people[d.p].name;
 				});
@@ -476,20 +453,20 @@ function render_topic(q, start, end) {
 				.style("fill", function(d) {
 					return "orangered";
 				})
-			// people_flow.append("line")
-			// 	.attr("x1", 0)
-			// 	.attr("x2", 0)
-			// 	.attr("y1", 0)
-			// 	.attr("y2", function(d){
-			// 		return 200 - d.offset * 20;
-			// 	})
-			// 	.style("stroke-width", 1)
-			// 	.style("stroke", function(d) {
-			// 		return "#60afe9";
-			// 	})
-			// 	.style("fill", function(d) {
-			// 		return "#60afe9";
-			// 	})
+			people_flow.append("line")
+				.attr("x1", 0)
+				.attr("x2", 0)
+				.attr("y1", 0)
+				.attr("y2", function(d){
+					return 200 - d.offset * 20;
+				})
+				.style("stroke-width", 1)
+				.style("stroke", function(d) {
+					return "#60afe9";
+				})
+				.style("fill", function(d) {
+					return "#60afe9";
+				})
 		}
 
 		draw_flow(energy.terms[1]);

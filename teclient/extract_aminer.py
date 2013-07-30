@@ -1,4 +1,9 @@
+import sys
+sys.path.append("../")
+
 from teclient import TermExtractorClient
+from dcclient import dcclient
+from bs4 import UnicodeDammit
 import pickle
 import logging
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
@@ -18,13 +23,13 @@ def extract_aminer():
         logging.info("reading paper title")
         for line in pub_f:
             x = line.strip("\n").split("\t")
-            papers_title[x[0]] = x[1]
+            papers_title[int(x[0])] = UnicodeDammit(x[1]).markup
     #read paper abstracts
     with open("/home/yutao/Data/knowledge-drift/pub_ext.txt") as abs_f:    
         logging.info("reading paper abstract")
         for line in abs_f:
             x = line.strip("\n").split("\t")
-            papers_abs[x[0]] = x[1]
+            papers_abs[int(x[0])] = UnicodeDammit(x[1]).markup
     #concatenate titles and abstracts
     for i in papers_title:
         idx += 1

@@ -2,11 +2,45 @@
 <link rel="stylesheet" type="text/css" href="/static/css/frame.css">
 
 <div id="chart" class="pull-left">
+  <script src="/static/js/topictrend.js"></script>
   <div class="modal-loading"></div>
 </div>
 <div id="bottom-box" ></div>
 
 <div id="right-box">
+  <script type="text/javascript">
+
+
+
+    // dots = bunch.selectAll("g.key_dot")
+    //   .data(function(d) {
+    //     return d.doc;
+    //   });
+    // dots.enter()
+    //   .append("circle").attr("class", "key_dot")
+    //   .attr("cx", function(d) {
+    //     return x(energy.documents[d].year) + 6;
+    //   })
+    //   .attr("cy", function(d) {
+    //     return 9;
+    //   })
+    //   .attr("r", function(d) {
+    //     return 6;
+    //   })
+    //   .style("stroke-width", 1)
+    //   .style("stroke", function(d) {
+    //     return "#eee";
+    //   })
+    //   .style("opacity", .1)
+    //   .style("fill", function(d) {
+    //     return "orangered";
+    //   })
+
+
+  </script>
+</div>
+
+<!-- <div id="right-box">
   <div class="slider-bar">
     <div class="control-left-text i18n i18n-expand-threshold">#people</div>
     <div id="ctrl-expand-threshold" class="pkuvis-slider pkuvis-slider-center" style="width: 120px; position: relative; height: 16px; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; display: inline-block; vertical-align: top; margin: 4px; background-color: rgb(204, 204, 204);">
@@ -37,6 +71,5 @@
       <div id="people-list"></div>
     </div>
   </div>
-</div>
-<script src="/static/js/topictrend.js"></script>
+</div> -->
 %rebase layout
